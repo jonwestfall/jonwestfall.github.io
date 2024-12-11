@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Kinja and Coconut Want for Christmas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f5f0;
+            color: #444;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #d2691e;
+            margin-bottom: 20px;
+        }
+
+        #wish {
+            font-size: 1.5em;
+            color: #2f4f4f;
+            margin: 20px auto;
+            padding: 20px;
+            border: 2px dashed #d2691e;
+            border-radius: 10px;
+            background-color: #fffaf0;
+            max-width: 600px;
+        }
+
+        button {
+            background-color: #d2691e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #a0522d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>What Kinja and Coconut Want for Christmas</h1>
+        <div id="wish">Click the button to see what Kinja and Coconut dream of this Christmas!</div>
+        <button onclick="dispenseWish()">Get Cat Wish</button>
+    </div>
+
+    <script>
+        const wishes = [
+            "Kinja wants a new perch on top of the refrigerator for better food-stealing vantage points.",
+            "Coconut wants a soft blanket with daddy's scent to make biscuits on.",
+            "Kinja wants a grooming brush so he can be groomed while grooming everyone else.",
+            "Coconut wants a plush toy shaped like mousie.",
+            "Kinja wants an alarm clock to match his sleepy mom's schedule.",
+            "Coconut wants a calming diffuser to help with his neurotic moments.",
+            "Kinja wants a toy fridge he can climb on without getting in trouble.",
+            "Coconut wants a little cat-sized recliner for his human-like sitting poses.",
+            "Kinja wants a wrestling mat so he and Coconut can have proper brotherly battles.",
+            "Coconut wants a soundproof hideaway for when he gets startled.",
+            "Kinja wants a treat dispenser he can figure out how to break into.",
+            "Coconut wants a cozy hammock that rocks gently.",
+            "Kinja wants a silly goose-themed collar to match dad's nickname for him.",
+            "Coconut wants a toy that plays calming music when touched.",
+            "Kinja wants a heated bed for long, groggy naps.",
+            "Coconut wants an exercise wheel to work on his ab muscles.",
+            "Kinja wants a fridge-shaped scratching post.",
+            "Coconut wants a window perch to watch birds safely.",
+            "Kinja wants a special gourmet food sampler.",
+            "Coconut wants a laser pointer he can chase at his own pace.",
+            "Kinja wants a soft hat to groom people with more style.",
+            "Coconut wants a small plush toy to carry around when he’s feeling vocal.",
+            "Kinja wants a tiny ladder for sneaky fridge access.",
+            "Coconut wants a fluffy cushion for his biscuit-making sessions.",
+            "Kinja wants a sleepy-time blanket that keeps him warm after naps.",
+            "Coconut wants a treat puzzle to stimulate his mind.",
+            "Kinja wants an indestructible feather toy.",
+            "Coconut wants a little treadmill to burn off nervous energy.",
+            "Kinja wants a box set of climbing shelves to explore.",
+            "Coconut wants a quiet cuddle corner with dad.",
+            "Kinja wants a catnip-filled toy fridge.",
+            "Coconut wants a reflective ball to bat around.",
+            "Kinja wants a plush goose toy to match his silly nickname.",
+            "Coconut wants a blanket with built-in kneading zones.",
+            "Kinja wants a treat subscription service for constant snacks.",
+            "Coconut wants a new interactive toy that responds to his paw taps.",
+            "Kinja wants a climbing tree with fridge-shaped platforms.",
+            "Coconut wants a small, cozy hoodie to wear when it’s chilly.",
+            "Kinja wants a grooming glove to help with his obsessive grooming habits.",
+            "Coconut wants a scratcher shaped like a sofa for lounging.",
+            "Kinja wants a plush sleepy goose pillow for lazy mornings.",
+            "Coconut wants a massage mat for relaxing after making biscuits.",
+            "Kinja wants a box full of shiny, crinkly paper to play with.",
+            "Coconut wants a soft nest to feel secure in during loud moments.",
+            "Kinja wants a stack of cardboard boxes for climbing and hiding.",
+            "Coconut wants a fish tank screensaver to stare at.",
+            "Kinja wants a hammock that hangs from the fridge handle.",
+            "Coconut wants a warm fleece-lined cat cave.",
+            "Kinja wants a scratcher that looks like a goose.",
+            "Coconut wants a blanket designed for maximum biscuit-making.",
+            "Kinja wants a grooming brush that doubles as a toy.",
+            "Coconut wants a plush ball with a quiet rattle inside.",
+            "Kinja wants a treat launcher he can master.",
+            "Coconut wants a heated pad for his favorite biscuit-making spot.",
+            "Kinja wants a stash of small stolen snacks wrapped like gifts.",
+            "Coconut wants a meditation mat to help with his nervous energy."
+        ];
+
+        function dispenseWish() {
+            const randomIndex = Math.floor(Math.random() * wishes.length);
+            document.getElementById('wish').innerText = wishes[randomIndex];
+        }
+    </script>
+</body>
+</html>

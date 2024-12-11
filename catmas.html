@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What the Cat Wants for Christmas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f5f0;
+            color: #444;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            margin-top: 50px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #d2691e;
+            margin-bottom: 20px;
+        }
+
+        #wish {
+            font-size: 1.5em;
+            color: #2f4f4f;
+            margin: 20px auto;
+            padding: 20px;
+            border: 2px dashed #d2691e;
+            border-radius: 10px;
+            background-color: #fffaf0;
+            max-width: 600px;
+        }
+
+        button {
+            background-color: #d2691e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #a0522d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>What the Cat Wants for Christmas</h1>
+        <div id="wish">Click the button to see what your cat dreams of this Christmas!</div>
+        <button onclick="dispenseWish()">Get Cat Wish</button>
+    </div>
+
+    <script>
+        const wishes = [
+            "A fluffy new bed to nap in all day.",
+            "Endless catnip toys to roll around with.",
+            "A box of the finest tuna.",
+            "A warm sunbeam that never moves.",
+            "A scratching post that doubles as a throne.",
+            "A robotic mouse that runs forever.",
+            "Feathers on strings, but extra shiny ones.",
+            "A blanket that smells like their favorite human.",
+            "Treats delivered hourly on a silver platter.",
+            "The perfect hiding spot inside the Christmas tree.",
+            "A laser pointer that never stops moving.",
+            "A collection of cardboard boxes in all sizes.",
+            "An automatic belly scratcher.",
+            "Freshly laundered laundry to sleep on.",
+            "A gourmet platter of salmon and shrimp.",
+            "A bird feeder positioned perfectly outside the window.",
+            "A fountain of flowing fresh water.",
+            "A heated blanket just for them.",
+            "A toy that squeaks and scurries.",
+            "A new collar with a sparkling bell.",
+            "An unlimited supply of crunchy treats.",
+            "A magical tree that grows catnip.",
+            "A tiny Santa hat for photoshoots.",
+            "A room full of dangling ribbons.",
+            "A window seat with a perfect view of squirrels.",
+            "A stylish sweater to strut around in.",
+            "A plush mouse filled with premium catnip.",
+            "A special spa day with brushing and pampering.",
+            "A friend to chase around the house.",
+            "An enchanted wand toy that never tires.",
+            "A soft pillow made of clouds.",
+            "A holiday feast served on fine china.",
+            "A glittering garland to bat around.",
+            "A secret stash of hidden snacks.",
+            "A magic door that leads to adventure.",
+            "A stash of stolen hair ties.",
+            "A festive bowtie to wear for selfies.",
+            "A glowing fireplace to lounge near.",
+            "A ball pit filled with jingle balls.",
+            "An entire room filled with scratching posts.",
+            "A hammock near a sunny window.",
+            "A fish tank to stare at all day.",
+            "A cozy hooded cat cave.",
+            "An endless supply of cozy socks to steal.",
+            "A bubble machine to pop for hours."
+        ];
+
+        function dispenseWish() {
+            const randomIndex = Math.floor(Math.random() * wishes.length);
+            document.getElementById('wish').innerText = wishes[randomIndex];
+        }
+    </script>
+</body>
+</html>
