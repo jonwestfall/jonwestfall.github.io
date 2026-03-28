@@ -1,0 +1,161 @@
+:root {
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --text: #1b2430;
+  --muted: #5d6a79;
+  --primary: #0e5bd8;
+  --primary-soft: #dbe9ff;
+  --warn: #9d5f00;
+  --danger: #a12626;
+  --good: #1f7a40;
+  --shadow: 0 10px 30px rgba(20, 38, 70, 0.08);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 400px at 10% -10%, #d4e5ff, transparent),
+    radial-gradient(900px 500px at 90% -20%, #dff8ef, transparent),
+    var(--bg);
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1, h2, h3, h4 {
+  font-family: "Fraunces", Georgia, serif;
+  margin: 0 0 0.5rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.topbar p { margin: 0; color: var(--muted); }
+.row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+.muted { color: var(--muted); }
+.eyebrow { text-transform: uppercase; letter-spacing: 0.09em; font-size: 0.78rem; color: var(--primary); }
+.subtitle { max-width: 65ch; color: var(--muted); }
+.plain-answer { font-size: 1.1rem; line-height: 1.45; }
+
+button, .file-label {
+  border: 1px solid #c8d3e6;
+  background: #fff;
+  color: var(--text);
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+button:hover, .file-label:hover { border-color: var(--primary); }
+button.primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+button.active { background: var(--primary-soft); border-color: var(--primary); }
+
+.file-label input { display: none; }
+
+.panel {
+  background: var(--panel);
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid #dde5f3;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.landing .hero {
+  background: linear-gradient(130deg, #ffffff 30%, #eff4ff 100%);
+  border: 1px solid #d7e2f8;
+  border-radius: 1.2rem;
+  padding: 1.2rem;
+  box-shadow: var(--shadow);
+}
+
+.panel-grid, .example-grid, .grid-two {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-grid, .example-grid { margin-top: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.grid-two { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.full-width { grid-column: 1 / -1; }
+
+.example-card {
+  text-align: left;
+  transition: transform 120ms ease;
+}
+.example-card:hover { transform: translateY(-2px); }
+
+label { display: flex; flex-direction: column; gap: 0.35rem; font-weight: 600; }
+input, select, textarea {
+  border: 1px solid #c9d5e9;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+ul, ol { margin: 0.35rem 0 0.35rem 1.2rem; }
+.switch-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+.recommendation { background: #f9fbff; border: 1px dashed #ccd8ec; border-radius: 0.8rem; padding: 0.8rem; margin-bottom: 0.8rem; }
+.warn { border-color: #f0c77f; background: #fffaf0; }
+.error { color: var(--danger); font-weight: 600; }
+
+.preview table, .heat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.preview th, .preview td, .heat-table th, .heat-table td {
+  border: 1px solid #dae2f1;
+  padding: 0.35rem 0.45rem;
+  text-align: left;
+}
+.preview th small { display: block; color: var(--muted); font-weight: 400; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem; }
+.kv { border: 1px solid #dce4f2; border-radius: 0.7rem; padding: 0.55rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.kv span { color: var(--muted); font-size: 0.87rem; }
+
+.trust.low { border-left: 8px solid var(--good); }
+.trust.moderate { border-left: 8px solid var(--warn); }
+.trust.high { border-left: 8px solid var(--danger); }
+
+.mini-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2rem;
+  min-height: 160px;
+}
+.bar-block { text-align: center; }
+.bar {
+  width: 68px;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: linear-gradient(180deg, #86abf8, #1b67df);
+}
+.scatter circle { fill: #0b66e6; opacity: 0.75; }
+
+.links, .disclaimer { color: var(--muted); }
+
+@media (max-width: 720px) {
+  .topbar { flex-direction: column; align-items: flex-start; }
+}
+
+@media print {
+  .topbar .row, button, .file-label { display: none !important; }
+  body { background: #fff; }
+  .panel { box-shadow: none; border-color: #ccc; }
+}
