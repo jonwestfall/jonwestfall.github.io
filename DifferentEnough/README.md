@@ -80,8 +80,8 @@ npm run test
 ## GitHub Pages Deployment (Vite)
 
 This project uses `vite.config.ts` with:
-- `base` inferred from `GITHUB_REPOSITORY` during build (e.g. `/repo-name/`)
-- fallback to `/` for local/dev use
+- GitHub Actions build base path: `/DifferentEnough/dist/`
+- Local/dev base path: `/`
 
 ### Included workflow (subfolder repo setup)
 
@@ -89,7 +89,10 @@ This workspace includes a ready workflow at:
 
 - `.github/workflows/deploy-different-enough-pages.yml`
 
-It builds from the `DifferentEnough` subfolder and deploys `DifferentEnough/dist` to Pages.
+It builds from the `DifferentEnough` subfolder and deploys a full site artifact that includes `DifferentEnough/dist`.
+That makes this app available at:
+
+- `https://jonwestfall.github.io/DifferentEnough/dist/`
 
 ### One-time GitHub setup
 
