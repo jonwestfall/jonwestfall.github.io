@@ -83,15 +83,33 @@ This project uses `vite.config.ts` with:
 - `base` inferred from `GITHUB_REPOSITORY` during build (e.g. `/repo-name/`)
 - fallback to `/` for local/dev use
 
-### Typical GitHub Actions flow
+### Included workflow (subfolder repo setup)
 
-1. Push code to your repository.
-2. Use a workflow that runs:
-   - `npm ci`
-   - `npm run build`
-3. Deploy `dist/` to GitHub Pages (Pages artifact or `gh-pages` branch flow).
+This workspace includes a ready workflow at:
 
-If your repo or deployment setup is unusual, you can explicitly set `base` in `vite.config.ts`.
+- `.github/workflows/deploy-different-enough-pages.yml`
+
+It builds from the `DifferentEnough` subfolder and deploys `DifferentEnough/dist` to Pages.
+
+### One-time GitHub setup
+
+1. Push this repository (including `.github/workflows/deploy-different-enough-pages.yml`) to GitHub.
+2. In GitHub, open `Settings` -> `Pages`.
+3. Under `Build and deployment`, set `Source` to `GitHub Actions`.
+4. Ensure your default deployment branch is `main` (or update the workflow trigger branch).
+5. Push a commit touching `DifferentEnough/**` or run the workflow manually from `Actions`.
+
+### What the workflow does
+
+1. Checks out code
+2. Installs Node 20
+3. Runs `npm ci` in `DifferentEnough`
+4. Runs tests (`npm run test`)
+5. Builds (`npm run build`)
+6. Uploads `DifferentEnough/dist`
+7. Deploys using `actions/deploy-pages`
+
+If your repo name changes or you move this app out of `DifferentEnough`, update workflow paths accordingly.
 
 ## Interpretation Notes
 
