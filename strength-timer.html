@@ -88,10 +88,12 @@
         border-radius: 999px;
         background: rgba(255, 255, 255, 0.18);
         color: #edfbff;
+        min-height: 46px;
         padding: 10px 16px;
         font-size: 1rem;
         font-weight: 700;
         cursor: pointer;
+        touch-action: manipulation;
       }
 
       .tab.active {
@@ -112,6 +114,50 @@
         padding: 16px;
         background: linear-gradient(140deg, #092636, #104058);
         color: #f4fbff;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+      }
+
+      .timer-main {
+        min-width: 0;
+      }
+
+      .traffic {
+        width: 74px;
+        border-radius: 16px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.34);
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+
+      .light {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.14);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.35);
+        transition: all 120ms ease;
+      }
+
+      .light.red.active {
+        background: #f45d48;
+        box-shadow: 0 0 18px rgba(244, 93, 72, 0.9);
+      }
+
+      .light.yellow.active {
+        background: #ffd24a;
+        box-shadow: 0 0 18px rgba(255, 210, 74, 0.9);
+      }
+
+      .light.green.active {
+        background: #36d475;
+        box-shadow: 0 0 18px rgba(54, 212, 117, 0.9);
       }
 
       .phase {
@@ -173,10 +219,13 @@
       .controls button {
         border: none;
         border-radius: 10px;
-        padding: 10px 14px;
+        min-height: 46px;
+        min-width: 92px;
+        padding: 10px 16px;
         font-size: 0.96rem;
         font-weight: 700;
         cursor: pointer;
+        touch-action: manipulation;
       }
 
       #start-btn {
@@ -216,6 +265,19 @@
       .slider-row input[type="range"] {
         width: 100%;
         accent-color: #0f8d96;
+        min-height: 42px;
+        touch-action: manipulation;
+      }
+
+      .slider-row input[type="range"]::-webkit-slider-thumb {
+        width: 28px;
+        height: 28px;
+      }
+
+      .slider-row input[type="range"]::-moz-range-thumb {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
       }
 
       .slider-row select {
@@ -227,6 +289,8 @@
         font-family: inherit;
         color: var(--ink);
         background: #f8fdff;
+        min-height: 46px;
+        touch-action: manipulation;
       }
 
       .guidance {
@@ -255,6 +319,16 @@
         .timer {
           padding: 12px;
         }
+
+        .timer {
+          grid-template-columns: 1fr;
+        }
+
+        .traffic {
+          width: 100%;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          justify-items: center;
+        }
       }
     </style>
   </head>
@@ -281,20 +355,27 @@
 
       <section class="panel" aria-live="polite">
         <div class="timer">
-          <p class="phase" id="phase-label">Seconds Up</p>
-          <p class="clock" id="clock">2</p>
-          <p class="cycle" id="cycle-meta">Cycle length: 6s</p>
-          <div class="session">
-            <div>Set <strong id="set-display">1</strong>/<strong id="set-total-display">3</strong></div>
-            <div>Rep <strong id="rep-display">8</strong></div>
+          <div class="timer-main">
+            <p class="phase" id="phase-label">Seconds Up</p>
+            <p class="clock" id="clock">2</p>
+            <p class="cycle" id="cycle-meta">Cycle length: 6s</p>
+            <div class="session">
+              <div>Set <strong id="set-display">1</strong>/<strong id="set-total-display">1</strong></div>
+              <div>Rep <strong id="rep-display">15</strong></div>
+            </div>
+            <div class="progress" aria-hidden="true">
+              <div id="phase-fill" class="fill"></div>
+            </div>
+            <div class="controls">
+              <button id="start-btn" type="button">Start</button>
+              <button id="pause-btn" type="button">Pause</button>
+              <button id="reset-btn" type="button">Reset</button>
+            </div>
           </div>
-          <div class="progress" aria-hidden="true">
-            <div id="phase-fill" class="fill"></div>
-          </div>
-          <div class="controls">
-            <button id="start-btn" type="button">Start</button>
-            <button id="pause-btn" type="button">Pause</button>
-            <button id="reset-btn" type="button">Reset</button>
+          <div class="traffic" aria-label="Tempo traffic light">
+            <div id="light-red" class="light red"></div>
+            <div id="light-yellow" class="light yellow"></div>
+            <div id="light-green" class="light green"></div>
           </div>
         </div>
 
@@ -318,41 +399,41 @@
           <div class="slider-row">
             <label for="down-range">
               Seconds Down
-              <span id="down-value">2s</span>
+              <span id="down-value">4s</span>
             </label>
-            <input id="down-range" type="range" min="1" max="10" step="1" value="2" />
+            <input id="down-range" type="range" min="1" max="10" step="1" value="4" />
           </div>
 
           <div class="slider-row">
             <label for="reset-range">
               Reset Time (between reps)
-              <span id="reset-value">1s</span>
+              <span id="reset-value">3s</span>
             </label>
-            <input id="reset-range" type="range" min="0" max="10" step="1" value="1" />
+            <input id="reset-range" type="range" min="0" max="10" step="1" value="3" />
           </div>
 
           <div class="slider-row">
             <label for="set-rest-range">
               Rest Between Sets
-              <span id="set-rest-value">60s</span>
+              <span id="set-rest-value">90s</span>
             </label>
-            <input id="set-rest-range" type="range" min="15" max="240" step="5" value="60" />
+            <input id="set-rest-range" type="range" min="15" max="240" step="5" value="90" />
           </div>
 
           <div class="slider-row">
             <label for="sets-range">
               Number of Sets
-              <span id="sets-value">3</span>
+              <span id="sets-value">1</span>
             </label>
-            <input id="sets-range" type="range" min="1" max="8" step="1" value="3" />
+            <input id="sets-range" type="range" min="1" max="8" step="1" value="1" />
           </div>
 
           <div class="slider-row">
             <label for="start-reps-range">
               Starting Reps
-              <span id="start-reps-value">8</span>
+              <span id="start-reps-value">15</span>
             </label>
-            <input id="start-reps-range" type="range" min="1" max="30" step="1" value="8" />
+            <input id="start-reps-range" type="range" min="1" max="30" step="1" value="15" />
           </div>
 
           <div class="slider-row">
@@ -378,11 +459,11 @@
         biceps: {
           up: 2,
           hold: 2,
-          down: 2,
-          reset: 1,
+          down: 4,
+          reset: 3,
           setRest: 90,
-          sets: 3,
-          startReps: 10,
+          sets: 1,
+          startReps: 15,
           repDirection: "down",
           guidanceTitle: "Bicep Curls Guidance",
           guidanceLines: [
@@ -421,6 +502,9 @@
       const clock = document.getElementById("clock");
       const cycleMeta = document.getElementById("cycle-meta");
       const phaseFill = document.getElementById("phase-fill");
+      const lightRed = document.getElementById("light-red");
+      const lightYellow = document.getElementById("light-yellow");
+      const lightGreen = document.getElementById("light-green");
       const guidanceBox = document.getElementById("guidance-box");
 
       const upRange = document.getElementById("up-range");
@@ -501,6 +585,12 @@
         repDisplay.textContent = String(currentRep);
       }
 
+      function setTrafficLight(color) {
+        lightRed.classList.toggle("active", color === "red");
+        lightYellow.classList.toggle("active", color === "yellow");
+        lightGreen.classList.toggle("active", color === "green");
+      }
+
       function renderGuidance(exercise) {
         const { guidanceTitle, guidanceLines } = presets[exercise];
         guidanceBox.innerHTML = `
@@ -545,6 +635,7 @@
           clock.textContent = "0";
           cycleMeta.textContent = "Great work.";
           phaseFill.style.width = "100%";
+          setTrafficLight("green");
           finished = true;
           pauseTimer();
           return;
@@ -567,6 +658,7 @@
           clock.textContent = String(remaining);
           cycleMeta.textContent = `Set ${currentSet} starts next`;
           phaseFill.style.width = "0%";
+          setTrafficLight("green");
           return;
         }
 
@@ -583,6 +675,14 @@
         clock.textContent = String(remaining);
         cycleMeta.textContent = `Rep cycle: ${totalCycle(settings)}s`;
         phaseFill.style.width = "0%";
+        const phaseKey = phases[idx].key;
+        if (phaseKey === "hold") {
+          setTrafficLight("red");
+        } else if (phaseKey === "reset") {
+          setTrafficLight("green");
+        } else {
+          setTrafficLight("yellow");
+        }
       }
 
       function advancePhase(settings) {
