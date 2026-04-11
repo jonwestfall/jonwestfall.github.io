@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Strength Tempo Timer | Jon Westfall</title>
+    <meta
+      name="description"
+      content="Large tempo timer for bicep curls and tricep extensions with adjustable phase sliders."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bungee:wght@400&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #081a24;
+        --bg2: #0d2d3f;
+        --panel: rgba(255, 255, 255, 0.92);
+        --ink: #0b2735;
+        --muted: #37586a;
+        --accent: #f5b700;
+        --accent2: #11b5ae;
+        --accent3: #f45d48;
+        --radius: 20px;
+        --shadow: 0 14px 35px rgba(0, 0, 0, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", sans-serif;
+        color: #eaf8ff;
+        background:
+          radial-gradient(circle at 16% 10%, rgba(245, 183, 0, 0.24), transparent 42%),
+          radial-gradient(circle at 86% 22%, rgba(17, 181, 174, 0.28), transparent 35%),
+          linear-gradient(155deg, var(--bg), var(--bg2));
+      }
+
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .back {
+        color: #d4f4ff;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      h1 {
+        margin: 0;
+        font-family: "Bungee", sans-serif;
+        letter-spacing: 0.02em;
+        font-size: clamp(1.6rem, 4.4vw, 2.7rem);
+      }
+
+      .subtitle {
+        margin: 10px 0 20px;
+        color: #d8f0fb;
+        font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+      }
+
+      .tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 16px;
+      }
+
+      .tab {
+        border: none;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        color: #edfbff;
+        padding: 10px 16px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .tab.active {
+        color: #072530;
+        background: linear-gradient(120deg, #f5b700, #ffd968);
+      }
+
+      .panel {
+        background: var(--panel);
+        color: var(--ink);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 16px;
+      }
+
+      .timer {
+        border-radius: 16px;
+        padding: 16px;
+        background: linear-gradient(140deg, #092636, #104058);
+        color: #f4fbff;
+      }
+
+      .phase {
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.9rem;
+      }
+
+      .clock {
+        margin: 0;
+        line-height: 1;
+        font-family: "Bungee", sans-serif;
+        font-size: clamp(4.6rem, 18vw, 9rem);
+      }
+
+      .cycle {
+        margin: 4px 0 0;
+        font-size: 1rem;
+        color: #d4ecf8;
+      }
+
+      .progress {
+        margin-top: 10px;
+        height: 10px;
+        width: 100%;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        overflow: hidden;
+      }
+
+      .fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(120deg, var(--accent), var(--accent2));
+        transition: width 0.22s linear;
+      }
+
+      .controls {
+        margin-top: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .controls button {
+        border: none;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 0.96rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      #start-btn {
+        background: var(--accent2);
+        color: #042a2d;
+      }
+
+      #pause-btn {
+        background: #ffd05f;
+        color: #2f1e00;
+      }
+
+      #reset-btn {
+        background: #ffd7d2;
+        color: #4c130b;
+      }
+
+      .sliders {
+        margin-top: 16px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .slider-row label {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
+      .slider-row span {
+        color: var(--muted);
+        font-weight: 600;
+      }
+
+      .slider-row input[type="range"] {
+        width: 100%;
+        accent-color: #0f8d96;
+      }
+
+      .guidance {
+        margin-top: 16px;
+        border-radius: 12px;
+        background: #eaf8ff;
+        padding: 12px;
+      }
+
+      .guidance h2 {
+        margin: 0 0 8px;
+        font-size: 1.04rem;
+      }
+
+      .guidance p {
+        margin: 6px 0;
+        color: #24485b;
+      }
+
+      @media (max-width: 640px) {
+        .wrap {
+          padding: 16px 12px 30px;
+        }
+
+        .panel,
+        .timer {
+          padding: 12px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="topbar">
+        <a class="back" href="/index.html">← Back to Home</a>
+      </div>
+
+      <h1>Morning Strength Tempo Timer</h1>
+      <p class="subtitle">
+        Rotate through <strong>Seconds Up</strong>, <strong>Time Under Tension</strong>, and
+        <strong>Seconds Down</strong> with big visual timers.
+      </p>
+
+      <div class="tabs" role="tablist" aria-label="Exercise Tabs">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-exercise="biceps">
+          Bicep Curls
+        </button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="triceps">
+          Tricep Extensions
+        </button>
+      </div>
+
+      <section class="panel" aria-live="polite">
+        <div class="timer">
+          <p class="phase" id="phase-label">Seconds Up</p>
+          <p class="clock" id="clock">2</p>
+          <p class="cycle" id="cycle-meta">Cycle length: 6s</p>
+          <div class="progress" aria-hidden="true">
+            <div id="phase-fill" class="fill"></div>
+          </div>
+          <div class="controls">
+            <button id="start-btn" type="button">Start</button>
+            <button id="pause-btn" type="button">Pause</button>
+            <button id="reset-btn" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="sliders">
+          <div class="slider-row">
+            <label for="up-range">
+              Seconds Up
+              <span id="up-value">2s</span>
+            </label>
+            <input id="up-range" type="range" min="1" max="8" step="1" value="2" />
+          </div>
+
+          <div class="slider-row">
+            <label for="hold-range">
+              Time Under Tension
+              <span id="hold-value">2s</span>
+            </label>
+            <input id="hold-range" type="range" min="0" max="10" step="1" value="2" />
+          </div>
+
+          <div class="slider-row">
+            <label for="down-range">
+              Seconds Down
+              <span id="down-value">2s</span>
+            </label>
+            <input id="down-range" type="range" min="1" max="10" step="1" value="2" />
+          </div>
+        </div>
+
+        <div class="guidance" id="guidance-box">
+          <h2>Bicep Curls Guidance</h2>
+          <p><strong>Rest:</strong> 90-180s for strength, 30-90s for hypertrophy.</p>
+          <p><strong>Tempo:</strong> 2s up, 2s down is standard. Slow negatives (4-5s down) increase tension.</p>
+          <p><strong>Frequency:</strong> 2-5 sessions/week.</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const presets = {
+        biceps: {
+          up: 2,
+          hold: 2,
+          down: 2,
+          guidanceTitle: "Bicep Curls Guidance",
+          guidanceLines: [
+            "Rest: 90-180s for strength, 30-90s for hypertrophy.",
+            "Tempo: 2s up, 2s down is standard. Slow negatives (4-5s down) increase tension.",
+            "Frequency: 2-5 sessions/week."
+          ]
+        },
+        triceps: {
+          up: 2,
+          hold: 1,
+          down: 3,
+          guidanceTitle: "Tricep Extensions Guidance",
+          guidanceLines: [
+            "Tempo: 1-2s to extend, 2-3s to lower with controlled form.",
+            "Sets/Reps: 2-3 sets of 8-15 reps.",
+            "Rest: 60-90s between sets."
+          ]
+        }
+      };
+
+      const phases = [
+        { key: "up", label: "Seconds Up" },
+        { key: "hold", label: "Time Under Tension" },
+        { key: "down", label: "Seconds Down" }
+      ];
+
+      const tabs = Array.from(document.querySelectorAll(".tab"));
+      const phaseLabel = document.getElementById("phase-label");
+      const clock = document.getElementById("clock");
+      const cycleMeta = document.getElementById("cycle-meta");
+      const phaseFill = document.getElementById("phase-fill");
+      const guidanceBox = document.getElementById("guidance-box");
+
+      const upRange = document.getElementById("up-range");
+      const holdRange = document.getElementById("hold-range");
+      const downRange = document.getElementById("down-range");
+      const upValue = document.getElementById("up-value");
+      const holdValue = document.getElementById("hold-value");
+      const downValue = document.getElementById("down-value");
+
+      const startBtn = document.getElementById("start-btn");
+      const pauseBtn = document.getElementById("pause-btn");
+      const resetBtn = document.getElementById("reset-btn");
+
+      let activeExercise = "biceps";
+      let timer = null;
+      let isRunning = false;
+      let phaseIndex = 0;
+      let remaining = 0;
+      let phaseDuration = 0;
+
+      function getSettings() {
+        return {
+          up: Number(upRange.value),
+          hold: Number(holdRange.value),
+          down: Number(downRange.value)
+        };
+      }
+
+      function formatSeconds(n) {
+        return `${n}s`;
+      }
+
+      function updateSliderLabels() {
+        upValue.textContent = formatSeconds(upRange.value);
+        holdValue.textContent = formatSeconds(holdRange.value);
+        downValue.textContent = formatSeconds(downRange.value);
+        if (!isRunning) {
+          resetDisplay();
+        }
+      }
+
+      function totalCycle(settings) {
+        return settings.up + settings.hold + settings.down;
+      }
+
+      function renderGuidance(exercise) {
+        const { guidanceTitle, guidanceLines } = presets[exercise];
+        guidanceBox.innerHTML = `
+          <h2>${guidanceTitle}</h2>
+          <p><strong>${guidanceLines[0].split(":")[0]}:</strong> ${guidanceLines[0].split(":").slice(1).join(":").trim()}</p>
+          <p><strong>${guidanceLines[1].split(":")[0]}:</strong> ${guidanceLines[1].split(":").slice(1).join(":").trim()}</p>
+          <p><strong>${guidanceLines[2].split(":")[0]}:</strong> ${guidanceLines[2].split(":").slice(1).join(":").trim()}</p>
+        `;
+      }
+
+      function phaseSeconds(settings, idx) {
+        const key = phases[idx].key;
+        return Math.max(0, Number(settings[key]));
+      }
+
+      function setPhase(idx, settings) {
+        phaseIndex = idx;
+        phaseDuration = phaseSeconds(settings, idx);
+        remaining = phaseDuration;
+
+        // Skip zero-duration phases.
+        if (phaseDuration === 0) {
+          return advancePhase(settings);
+        }
+
+        phaseLabel.textContent = phases[idx].label;
+        clock.textContent = String(remaining);
+        cycleMeta.textContent = `Cycle length: ${totalCycle(settings)}s`;
+        phaseFill.style.width = "0%";
+      }
+
+      function advancePhase(settings) {
+        const next = (phaseIndex + 1) % phases.length;
+        setPhase(next, settings);
+      }
+
+      function tick() {
+        const settings = getSettings();
+
+        if (remaining > 1) {
+          remaining -= 1;
+          clock.textContent = String(remaining);
+          if (phaseDuration > 0) {
+            const elapsed = phaseDuration - remaining;
+            phaseFill.style.width = `${Math.min(100, Math.round((elapsed / phaseDuration) * 100))}%`;
+          }
+          return;
+        }
+
+        phaseFill.style.width = "100%";
+        advancePhase(settings);
+      }
+
+      function startTimer() {
+        if (isRunning) return;
+        isRunning = true;
+        if (remaining <= 0) {
+          setPhase(phaseIndex, getSettings());
+        }
+        timer = setInterval(tick, 1000);
+      }
+
+      function pauseTimer() {
+        isRunning = false;
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      }
+
+      function resetDisplay() {
+        pauseTimer();
+        setPhase(0, getSettings());
+      }
+
+      function loadExercise(exercise) {
+        activeExercise = exercise;
+        const { up, hold, down } = presets[exercise];
+        upRange.value = String(up);
+        holdRange.value = String(hold);
+        downRange.value = String(down);
+        renderGuidance(exercise);
+        updateSliderLabels();
+        resetDisplay();
+      }
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((el) => {
+            const selected = el === tab;
+            el.classList.toggle("active", selected);
+            el.setAttribute("aria-selected", selected ? "true" : "false");
+          });
+
+          loadExercise(tab.dataset.exercise);
+        });
+      });
+
+      [upRange, holdRange, downRange].forEach((input) => {
+        input.addEventListener("input", updateSliderLabels);
+      });
+
+      startBtn.addEventListener("click", startTimer);
+      pauseBtn.addEventListener("click", pauseTimer);
+      resetBtn.addEventListener("click", resetDisplay);
+
+      loadExercise(activeExercise);
+    </script>
+  </body>
+</html>
