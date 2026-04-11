@@ -180,6 +180,34 @@
         color: #d4ecf8;
       }
 
+      .time-grid {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .time-card {
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.12);
+        padding: 10px;
+      }
+
+      .time-title {
+        margin: 0;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        font-size: 0.76rem;
+        color: #d4ecf8;
+      }
+
+      .time-value {
+        margin: 4px 0 0;
+        font-family: "Bungee", sans-serif;
+        font-size: clamp(1.6rem, 5vw, 2.2rem);
+        line-height: 1;
+      }
+
       .session {
         margin-top: 8px;
         display: flex;
@@ -247,6 +275,18 @@
         margin-top: 16px;
         display: grid;
         gap: 14px;
+      }
+
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .toggle-row input[type="checkbox"] {
+        width: 24px;
+        height: 24px;
+        touch-action: manipulation;
       }
 
       .slider-row label {
@@ -329,6 +369,10 @@
           grid-template-columns: repeat(3, minmax(0, 1fr));
           justify-items: center;
         }
+
+        .time-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -359,6 +403,16 @@
             <p class="phase" id="phase-label">Seconds Up</p>
             <p class="clock" id="clock">2</p>
             <p class="cycle" id="cycle-meta">Cycle length: 6s</p>
+            <div class="time-grid">
+              <div class="time-card">
+                <p class="time-title">Total Time</p>
+                <p class="time-value" id="total-time-value">03:45</p>
+              </div>
+              <div class="time-card">
+                <p class="time-title">Time Remaining</p>
+                <p class="time-value" id="remaining-time-value">03:45</p>
+              </div>
+            </div>
             <div class="session">
               <div>Set <strong id="set-display">1</strong>/<strong id="set-total-display">1</strong></div>
               <div>Rep <strong id="rep-display">15</strong></div>
@@ -443,6 +497,11 @@
               <option value="up">Count Up</option>
             </select>
           </div>
+
+          <div class="slider-row toggle-row">
+            <input id="hide-numbers-toggle" type="checkbox" />
+            <label for="hide-numbers-toggle">Traffic-Light Mode (hide numeric timers)</label>
+          </div>
         </div>
 
         <div class="guidance" id="guidance-box">
@@ -515,6 +574,7 @@
       const setsRange = document.getElementById("sets-range");
       const startRepsRange = document.getElementById("start-reps-range");
       const repDirection = document.getElementById("rep-direction");
+      const hideNumbersToggle = document.getElementById("hide-numbers-toggle");
       const upValue = document.getElementById("up-value");
       const holdValue = document.getElementById("hold-value");
       const downValue = document.getElementById("down-value");
@@ -525,6 +585,8 @@
       const setDisplay = document.getElementById("set-display");
       const setTotalDisplay = document.getElementById("set-total-display");
       const repDisplay = document.getElementById("rep-display");
+      const totalTimeValue = document.getElementById("total-time-value");
+      const remainingTimeValue = document.getElementById("remaining-time-value");
 
       const startBtn = document.getElementById("start-btn");
       const pauseBtn = document.getElementById("pause-btn");
@@ -540,6 +602,7 @@
       let currentRep = 1;
       let setResting = false;
       let finished = false;
+      let workoutRemaining = 0;
 
       function getSettings() {
         return {
@@ -558,6 +621,17 @@
         return `${n}s`;
       }
 
+      function formatClock(totalSeconds) {
+        const seconds = Math.max(0, Math.floor(totalSeconds));
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        if (hrs > 0) {
+          return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+        }
+        return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+
       function updateSliderLabels() {
         upValue.textContent = formatSeconds(upRange.value);
         holdValue.textContent = formatSeconds(holdRange.value);
@@ -569,11 +643,21 @@
         setTotalDisplay.textContent = String(setsRange.value);
         if (!isRunning) {
           resetDisplay();
+          return;
         }
+        renderTimeTotals(getSettings());
       }
 
       function totalCycle(settings) {
         return settings.up + settings.hold + settings.down + settings.reset;
+      }
+
+      function totalWorkoutSeconds(settings) {
+        const reps = repsPerSet(settings);
+        const workPerSet = reps * totalCycle(settings);
+        const allWork = workPerSet * settings.sets;
+        const allSetRest = Math.max(0, settings.sets - 1) * settings.setRest;
+        return allWork + allSetRest;
       }
 
       function repsPerSet(settings) {
@@ -583,6 +667,23 @@
       function renderSession() {
         setDisplay.textContent = String(currentSet);
         repDisplay.textContent = String(currentRep);
+      }
+
+      function renderTimeTotals(settings) {
+        const total = totalWorkoutSeconds(settings);
+        if (!isRunning || workoutRemaining <= 0 || workoutRemaining > total) {
+          workoutRemaining = total;
+        }
+        totalTimeValue.textContent = formatClock(total);
+        remainingTimeValue.textContent = formatClock(workoutRemaining);
+      }
+
+      function applyNumberVisibility() {
+        const hidden = hideNumbersToggle.checked;
+        const visibility = hidden ? "hidden" : "visible";
+        clock.style.visibility = visibility;
+        totalTimeValue.style.visibility = visibility;
+        remainingTimeValue.style.visibility = visibility;
       }
 
       function setTrafficLight(color) {
@@ -636,6 +737,8 @@
           cycleMeta.textContent = "Great work.";
           phaseFill.style.width = "100%";
           setTrafficLight("green");
+          workoutRemaining = 0;
+          remainingTimeValue.textContent = formatClock(workoutRemaining);
           finished = true;
           pauseTimer();
           return;
@@ -704,6 +807,10 @@
 
       function tick() {
         const settings = getSettings();
+        if (workoutRemaining > 0) {
+          workoutRemaining -= 1;
+          remainingTimeValue.textContent = formatClock(workoutRemaining);
+        }
 
         if (remaining > 1) {
           remaining -= 1;
@@ -747,7 +854,9 @@
         currentRep = initialRep(settings);
         setResting = false;
         finished = false;
+        workoutRemaining = totalWorkoutSeconds(settings);
         renderSession();
+        renderTimeTotals(settings);
         setPhase(0, settings);
       }
 
@@ -784,12 +893,14 @@
         input.addEventListener("input", updateSliderLabels);
       });
       repDirection.addEventListener("change", updateSliderLabels);
+      hideNumbersToggle.addEventListener("change", applyNumberVisibility);
 
       startBtn.addEventListener("click", startTimer);
       pauseBtn.addEventListener("click", pauseTimer);
       resetBtn.addEventListener("click", resetDisplay);
 
       loadExercise(activeExercise);
+      applyNumberVisibility();
     </script>
   </body>
 </html>
