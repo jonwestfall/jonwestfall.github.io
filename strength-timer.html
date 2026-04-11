@@ -844,9 +844,13 @@
         advancePhase(settings);
       }
 
-      function startWorkoutTimer() {
-        if (remaining <= 0) {
-          setPhase(phaseIndex, getSettings());
+      function startWorkoutTimer(forceFreshPhase = false) {
+        const settings = getSettings();
+        if (forceFreshPhase) {
+          phaseIndex = 0;
+          setPhase(0, settings);
+        } else if (remaining <= 0) {
+          setPhase(phaseIndex, settings);
         }
         isCountdownActive = false;
         hasWorkoutStarted = true;
@@ -878,7 +882,7 @@
 
         clearInterval(timer);
         timer = null;
-        startWorkoutTimer();
+        startWorkoutTimer(true);
       }
 
       function startPreCountdown() {
