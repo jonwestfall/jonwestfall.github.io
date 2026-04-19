@@ -497,6 +497,11 @@
             <label for="hide-numbers-toggle">Traffic-Light Mode (hide numeric timers)</label>
           </div>
 
+          <div class="slider-row toggle-row">
+            <input id="hide-traffic-toggle" type="checkbox" />
+            <label for="hide-traffic-toggle">Hide Traffic Light Display</label>
+          </div>
+
           <div class="slider-row">
             <label for="start-countdown-range">
               Start Countdown
@@ -568,6 +573,7 @@
       const lightRed = document.getElementById("light-red");
       const lightYellow = document.getElementById("light-yellow");
       const lightGreen = document.getElementById("light-green");
+      const trafficBox = document.querySelector(".traffic");
       const guidanceBox = document.getElementById("guidance-box");
 
       const upRange = document.getElementById("up-range");
@@ -580,6 +586,7 @@
       const startCountdownRange = document.getElementById("start-countdown-range");
       const repDirection = document.getElementById("rep-direction");
       const hideNumbersToggle = document.getElementById("hide-numbers-toggle");
+      const hideTrafficToggle = document.getElementById("hide-traffic-toggle");
       const upValue = document.getElementById("up-value");
       const holdValue = document.getElementById("hold-value");
       const downValue = document.getElementById("down-value");
@@ -694,6 +701,10 @@
         clock.style.visibility = visibility;
         totalTimeValue.style.visibility = visibility;
         remainingTimeValue.style.visibility = visibility;
+      }
+
+      function applyTrafficVisibility() {
+        trafficBox.style.display = hideTrafficToggle.checked ? "none" : "grid";
       }
 
       function updateStartButtonLabel() {
@@ -983,12 +994,14 @@
       });
       repDirection.addEventListener("change", updateSliderLabels);
       hideNumbersToggle.addEventListener("change", applyNumberVisibility);
+      hideTrafficToggle.addEventListener("change", applyTrafficVisibility);
 
       startBtn.addEventListener("click", toggleStartPause);
       resetBtn.addEventListener("click", resetDisplay);
 
       loadExercise(activeExercise);
       applyNumberVisibility();
+      applyTrafficVisibility();
     </script>
   </body>
 </html>
