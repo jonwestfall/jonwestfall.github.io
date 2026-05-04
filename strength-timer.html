@@ -377,6 +377,54 @@
         margin-top: 16px;
       }
 
+      .workout-tools {
+        margin-top: 16px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .workout-tool-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .workout-tool-actions button {
+        border: none;
+        border-radius: 10px;
+        min-height: 44px;
+        padding: 10px 14px;
+        background: #e1f4fb;
+        color: var(--ink);
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .workout-tool-actions .reset-workout {
+        background: #ffd7d2;
+        color: #4c130b;
+      }
+
+      .workout-json {
+        width: 100%;
+        min-height: 170px;
+        border: 1px solid #b9d8e6;
+        border-radius: 12px;
+        padding: 10px;
+        font: 0.9rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        color: var(--ink);
+        background: #f8fdff;
+        resize: vertical;
+      }
+
+      .workout-json-status {
+        margin: 0;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
       .workout-list h2 {
         margin: 0 0 10px;
         font-size: 1.05rem;
@@ -722,6 +770,19 @@
             </div>
           </div>
 
+          <div class="workout-tools" aria-label="Workout import and export tools">
+            <div class="workout-tool-actions">
+              <button id="reset-default-workout-btn" class="reset-workout" type="button">Reset to Default Workout</button>
+              <button id="export-workout-btn" type="button">Export JSON</button>
+              <button id="import-workout-btn" type="button">Import JSON</button>
+            </div>
+            <label class="slider-row" for="workout-json-text">
+              Workout JSON
+            </label>
+            <textarea id="workout-json-text" class="workout-json" spellcheck="false" aria-label="Workout JSON import and export text"></textarea>
+            <p id="workout-json-status" class="workout-json-status" role="status"></p>
+          </div>
+
           <div class="workout-list" aria-label="Full workout exercise list">
             <h2>Workout Sections</h2>
             <div class="workout-items" id="full-workout-list"></div>
@@ -850,6 +911,11 @@
       const fullStepCount = document.getElementById("full-step-count");
       const fullPlannedTime = document.getElementById("full-planned-time");
       const fullWorkoutList = document.getElementById("full-workout-list");
+      const resetDefaultWorkoutBtn = document.getElementById("reset-default-workout-btn");
+      const exportWorkoutBtn = document.getElementById("export-workout-btn");
+      const importWorkoutBtn = document.getElementById("import-workout-btn");
+      const workoutJsonText = document.getElementById("workout-json-text");
+      const workoutJsonStatus = document.getElementById("workout-json-status");
       const totalTimeValue = document.getElementById("total-time-value");
       const remainingTimeValue = document.getElementById("remaining-time-value");
       const exerciseTimeCard = document.getElementById("exercise-time-card");
@@ -861,10 +927,10 @@
 
       const stored = loadStoredSettings();
       let exerciseSettings = {
-        biceps: { ...pickTempoSettings(presets.biceps), ...(stored.exerciseSettings?.biceps || {}) },
-        triceps: { ...pickTempoSettings(presets.triceps), ...(stored.exerciseSettings?.triceps || {}) }
+        biceps: normalizeTempoSettings(stored.exerciseSettings?.biceps, pickTempoSettings(presets.biceps)),
+        triceps: normalizeTempoSettings(stored.exerciseSettings?.triceps, pickTempoSettings(presets.triceps))
       };
-      let fullSettings = { ...defaultFullSettings, ...(stored.fullSettings || {}) };
+      let fullSettings = normalizeFullSettings(stored.fullSettings);
 
       let activeExercise = "biceps";
       let hasLoadedExercise = false;
@@ -942,6 +1008,44 @@
           return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
         }
         return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+
+      function clampNumber(value, fallback, min, max) {
+        const num = Number(value);
+        if (!Number.isFinite(num)) return fallback;
+        return Math.min(max, Math.max(min, num));
+      }
+
+      function normalizeTempoSettings(settings, fallback) {
+        return {
+          up: clampNumber(settings?.up, fallback.up, 1, 8),
+          hold: clampNumber(settings?.hold, fallback.hold, 0, 10),
+          down: clampNumber(settings?.down, fallback.down, 1, 10),
+          reset: clampNumber(settings?.reset, fallback.reset, 0, 10),
+          setRest: clampNumber(settings?.setRest, fallback.setRest, 0, 240),
+          sets: clampNumber(settings?.sets, fallback.sets, 1, 8),
+          startReps: clampNumber(settings?.startReps, fallback.startReps, 1, 30),
+          startCountdown: clampNumber(settings?.startCountdown, fallback.startCountdown, 0, 15),
+          repDirection: settings?.repDirection === "down" ? "down" : "up"
+        };
+      }
+
+      function stringArray(value) {
+        return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
+      }
+
+      function normalizeFullSettings(settings, fallback = defaultFullSettings) {
+        return {
+          standardRest: clampNumber(settings?.standardRest, fallback.standardRest, 0, 120),
+          armSwitchRest: clampNumber(settings?.armSwitchRest, fallback.armSwitchRest, 0, 60),
+          sidePlankDuration: clampNumber(settings?.sidePlankDuration, fallback.sidePlankDuration, 5, 90),
+          standardReps: clampNumber(settings?.standardReps, fallback.standardReps, 1, 30),
+          includeHipHinges: typeof settings?.includeHipHinges === "boolean"
+            ? settings.includeHipHinges
+            : Boolean(fallback.includeHipHinges),
+          customOrder: stringArray(settings?.customOrder || settings?.sectionOrder || fallback.customOrder),
+          deletedStepIds: stringArray(settings?.deletedStepIds || fallback.deletedStepIds)
+        };
       }
 
       function readTempoControls() {
@@ -1548,6 +1652,93 @@
         updateFullLabels();
       }
 
+      function setWorkoutJsonStatus(message) {
+        workoutJsonStatus.textContent = message;
+      }
+
+      function workoutExportData() {
+        buildFullWorkout();
+        return {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          exerciseSettings,
+          fullWorkout: {
+            settings: {
+              standardRest: fullSettings.standardRest,
+              armSwitchRest: fullSettings.armSwitchRest,
+              sidePlankDuration: fullSettings.sidePlankDuration,
+              standardReps: fullSettings.standardReps,
+              includeHipHinges: fullSettings.includeHipHinges
+            },
+            sectionOrder: fullSteps.map((step) => step.id),
+            deletedStepIds: fullSettings.deletedStepIds || [],
+            sections: fullSteps.map((step) => ({
+              id: step.id,
+              round: step.round,
+              name: step.name,
+              type: step.type,
+              details: fullStepDetails(step),
+              estimatedSeconds: fullStepSeconds(step)
+            }))
+          }
+        };
+      }
+
+      function exportWorkoutJson() {
+        workoutJsonText.value = JSON.stringify(workoutExportData(), null, 2);
+        setWorkoutJsonStatus("Workout JSON exported.");
+      }
+
+      function resetDefaultWorkout() {
+        fullSettings = {
+          ...fullSettings,
+          includeHipHinges: true,
+          customOrder: [],
+          deletedStepIds: []
+        };
+        applyFullControls();
+        saveStoredSettings();
+        resetDisplay();
+        updateFullLabels();
+        setWorkoutJsonStatus("Default workout order restored.");
+      }
+
+      function importWorkoutJson() {
+        let data;
+        try {
+          data = JSON.parse(workoutJsonText.value);
+        } catch (error) {
+          setWorkoutJsonStatus("Import failed: JSON is not valid.");
+          return;
+        }
+
+        const importedFull = data.fullWorkout || data.fullSettings || data;
+        const importedFullSettings = importedFull.settings || importedFull;
+        const nextFullSettings = normalizeFullSettings({
+          ...importedFullSettings,
+          customOrder: importedFull.sectionOrder || importedFullSettings.customOrder,
+          deletedStepIds: importedFull.deletedStepIds || importedFullSettings.deletedStepIds
+        }, fullSettings);
+
+        if (data.exerciseSettings) {
+          exerciseSettings = {
+            biceps: normalizeTempoSettings(data.exerciseSettings.biceps, exerciseSettings.biceps),
+            triceps: normalizeTempoSettings(data.exerciseSettings.triceps, exerciseSettings.triceps)
+          };
+        }
+
+        fullSettings = nextFullSettings;
+        applyFullControls();
+        if (activeExercise === "biceps" || activeExercise === "triceps") {
+          applyTempoControls(getTempoSettings(activeExercise));
+          updateTempoLabels();
+        }
+        saveStoredSettings();
+        resetDisplay();
+        updateFullLabels();
+        setWorkoutJsonStatus("Workout JSON imported.");
+      }
+
       function fullStartCountdown() {
         return Math.max(0, Number(getTempoSettings("biceps").startCountdown));
       }
@@ -1934,6 +2125,9 @@
       startBtn.addEventListener("click", toggleStartPause);
       nextSectionBtn.addEventListener("click", advanceFullSegment);
       resetBtn.addEventListener("click", resetDisplay);
+      resetDefaultWorkoutBtn.addEventListener("click", resetDefaultWorkout);
+      exportWorkoutBtn.addEventListener("click", exportWorkoutJson);
+      importWorkoutBtn.addEventListener("click", importWorkoutJson);
 
       if (stored.display) {
         hideNumbersToggle.checked = Boolean(stored.display.hideNumbers);
