@@ -368,6 +368,82 @@
         font-size: 1.2rem;
       }
 
+      .workout-list {
+        margin-top: 16px;
+      }
+
+      .workout-list h2 {
+        margin: 0 0 10px;
+        font-size: 1.05rem;
+      }
+
+      .workout-items {
+        display: grid;
+        gap: 10px;
+      }
+
+      .workout-item {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        border: 1px solid #c2dce8;
+        border-radius: 12px;
+        background: #f8fdff;
+        padding: 10px;
+      }
+
+      .workout-jump {
+        width: 100%;
+        border: none;
+        background: transparent;
+        color: var(--ink);
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .workout-jump strong {
+        display: block;
+        font-size: 1rem;
+      }
+
+      .workout-jump span {
+        display: block;
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .workout-actions {
+        display: flex;
+        gap: 6px;
+      }
+
+      .workout-actions button {
+        width: 40px;
+        height: 40px;
+        border: none;
+        border-radius: 10px;
+        background: #e1f4fb;
+        color: var(--ink);
+        font-size: 1.05rem;
+        font-weight: 800;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      .workout-actions button:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+      }
+
+      .workout-actions .delete-step {
+        background: #ffd7d2;
+        color: #4c130b;
+      }
+
       .guidance {
         margin-top: 16px;
         border-radius: 12px;
@@ -424,6 +500,18 @@
 
         .full-summary {
           grid-template-columns: 1fr;
+        }
+
+        .workout-item {
+          grid-template-columns: 1fr;
+        }
+
+        .workout-actions {
+          justify-content: stretch;
+        }
+
+        .workout-actions button {
+          flex: 1;
         }
       }
     </style>
@@ -627,6 +715,11 @@
               <strong id="full-planned-time">00:00</strong>
             </div>
           </div>
+
+          <div class="workout-list" aria-label="Full workout exercise list">
+            <h2>Workout Sections</h2>
+            <div class="workout-items" id="full-workout-list"></div>
+          </div>
         </div>
 
         <div class="sliders sound-settings">
@@ -690,7 +783,9 @@
         armSwitchRest: 15,
         sidePlankDuration: 15,
         standardReps: 15,
-        includeHipHinges: true
+        includeHipHinges: true,
+        customOrder: [],
+        deletedStepIds: []
       };
 
       const phases = [
@@ -748,6 +843,7 @@
       const fullRoundCount = document.getElementById("full-round-count");
       const fullStepCount = document.getElementById("full-step-count");
       const fullPlannedTime = document.getElementById("full-planned-time");
+      const fullWorkoutList = document.getElementById("full-workout-list");
       const totalTimeValue = document.getElementById("total-time-value");
       const remainingTimeValue = document.getElementById("remaining-time-value");
       const exerciseTimeCard = document.getElementById("exercise-time-card");
@@ -861,7 +957,9 @@
           armSwitchRest: Number(fullSwitchRestRange.value),
           sidePlankDuration: Number(fullSidePlankRange.value),
           standardReps: Number(fullRepsRange.value),
-          includeHipHinges: fullIncludeHipsToggle.checked
+          includeHipHinges: fullIncludeHipsToggle.checked,
+          customOrder: Array.isArray(fullSettings.customOrder) ? fullSettings.customOrder : [],
+          deletedStepIds: Array.isArray(fullSettings.deletedStepIds) ? fullSettings.deletedStepIds : []
         };
       }
 
@@ -913,6 +1011,7 @@
         fullRoundCount.textContent = "3";
         fullStepCount.textContent = String(fullSteps.length);
         fullPlannedTime.textContent = formatClock(totalFullWorkoutSeconds());
+        renderFullWorkoutList();
       }
 
       function handleTempoInput() {
@@ -1155,6 +1254,7 @@
 
         for (let round = 1; round <= 3; round += 1) {
           steps.push({
+            id: `round-${round}-bicep-curls`,
             type: "reps",
             round,
             name: "Bicep Curls",
@@ -1163,6 +1263,7 @@
             afterRestSeconds: rest
           });
           steps.push({
+            id: `round-${round}-tricep-extensions`,
             type: "triceps_two_arm",
             round,
             name: "Tricep Extensions",
@@ -1172,6 +1273,7 @@
             afterRestSeconds: rest
           });
           steps.push({
+            id: `round-${round}-squats-exercise-band`,
             type: "reps",
             round,
             name: "Squats: Exercise Band",
@@ -1181,6 +1283,7 @@
           });
           if (fullSettings.includeHipHinges) {
             steps.push({
+              id: `round-${round}-hip-hinges-exercise-band`,
               type: "reps",
               round,
               name: "Hip Hinges: Exercise Band",
@@ -1190,6 +1293,7 @@
             });
           }
           steps.push({
+            id: `round-${round}-shoulder-shrugs-dumbbell`,
             type: "reps",
             round,
             name: "Shoulder Shrugs: Dumbbell",
@@ -1198,6 +1302,7 @@
             afterRestSeconds: rest
           });
           steps.push({
+            id: `round-${round}-upright-band-rows`,
             type: "reps",
             round,
             name: "Upright Band Rows",
@@ -1208,6 +1313,7 @@
 
           if (round === 2) {
             steps.push({
+              id: `round-${round}-side-plank`,
               type: "timed_hold",
               round,
               name: "Side Plank",
@@ -1216,6 +1322,7 @@
             });
           } else {
             steps.push({
+              id: `round-${round}-crunches`,
               type: "reps",
               round,
               name: "Crunches",
@@ -1226,7 +1333,31 @@
           }
         }
 
-        return steps;
+        return applyFullWorkoutEdits(steps);
+      }
+
+      function applyFullWorkoutEdits(defaultSteps) {
+        const defaultIds = defaultSteps.map((step) => step.id);
+        const deleted = new Set((fullSettings.deletedStepIds || []).filter((id) => defaultIds.includes(id)));
+        const remainingSteps = defaultSteps.filter((step) => !deleted.has(step.id));
+        const byId = new Map(remainingSteps.map((step) => [step.id, step]));
+        const ordered = [];
+
+        (fullSettings.customOrder || []).forEach((id) => {
+          if (byId.has(id)) {
+            ordered.push(byId.get(id));
+            byId.delete(id);
+          }
+        });
+        remainingSteps.forEach((step) => {
+          if (byId.has(step.id)) {
+            ordered.push(step);
+          }
+        });
+
+        fullSettings.customOrder = ordered.map((step) => step.id);
+        fullSettings.deletedStepIds = Array.from(deleted);
+        return ordered;
       }
 
       function buildFullWorkout() {
@@ -1307,6 +1438,108 @@
         return workout + fullStartCountdown();
       }
 
+      function fullStepSeconds(step) {
+        if (step.type === "reps") {
+          return step.reps * totalCycle(getTempoSettings(step.timingSource)) + step.afterRestSeconds;
+        }
+        if (step.type === "triceps_two_arm") {
+          return (step.repsPerArm * 2 * totalCycle(getTempoSettings(step.timingSource))) +
+            step.armSwitchRestSeconds +
+            step.afterRestSeconds;
+        }
+        if (step.type === "timed_hold") {
+          return step.durationSeconds + step.afterRestSeconds;
+        }
+        return step.afterRestSeconds || 0;
+      }
+
+      function fullStepDetails(step) {
+        const rest = step.afterRestSeconds > 0 ? `, ${step.afterRestSeconds}s rest` : "";
+        if (step.type === "reps") {
+          return `${step.reps} reps${rest}`;
+        }
+        if (step.type === "triceps_two_arm") {
+          return `${step.repsPerArm} reps Arm 1, ${step.armSwitchRestSeconds}s switch, ${step.repsPerArm} reps Arm 2${rest}`;
+        }
+        if (step.type === "timed_hold") {
+          return `${step.durationSeconds}s timed hold${rest}`;
+        }
+        return rest ? `${step.afterRestSeconds}s rest` : "";
+      }
+
+      function renderFullWorkoutList() {
+        if (!fullWorkoutList) return;
+        if (fullSteps.length === 0) {
+          fullWorkoutList.innerHTML = `
+            <div class="workout-item">
+              <div class="workout-jump">
+                <strong>No sections selected</strong>
+                <span>Turn Hip Hinges back on or reload the page to restore the default workout.</span>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        fullWorkoutList.innerHTML = fullSteps.map((step, index) => `
+          <div class="workout-item" data-step-id="${step.id}">
+            <button class="workout-jump" type="button" data-action="jump" data-step-id="${step.id}" aria-label="Jump to ${step.name}, round ${step.round}">
+              <strong>Round ${step.round}: ${step.name}</strong>
+              <span>${fullStepDetails(step)} · ${formatClock(fullStepSeconds(step))}</span>
+            </button>
+            <div class="workout-actions" aria-label="Edit ${step.name}, round ${step.round}">
+              <button type="button" data-action="up" data-step-id="${step.id}" aria-label="Move ${step.name} earlier" ${index === 0 ? "disabled" : ""}>↑</button>
+              <button type="button" data-action="down" data-step-id="${step.id}" aria-label="Move ${step.name} later" ${index === fullSteps.length - 1 ? "disabled" : ""}>↓</button>
+              <button class="delete-step" type="button" data-action="delete" data-step-id="${step.id}" aria-label="Delete ${step.name}">×</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      function sumSegmentsFrom(index) {
+        return fullSegments.slice(index).reduce((sum, segment) => sum + segment.duration, 0);
+      }
+
+      function jumpToFullStep(stepId) {
+        if (activeExercise !== "full") return;
+        buildFullWorkout();
+        const targetStepIndex = fullSteps.findIndex((step) => step.id === stepId);
+        if (targetStepIndex < 0) return;
+        const targetSegmentIndex = fullSegments.findIndex((segment) => segment.stepIndex === targetStepIndex);
+        if (targetSegmentIndex < 0) return;
+
+        fullSegmentIndex = targetSegmentIndex;
+        workoutRemaining = sumSegmentsFrom(targetSegmentIndex);
+        hasWorkoutStarted = true;
+        isCountdownActive = false;
+        setFullSegment(targetSegmentIndex, false);
+        updateStartButtonLabel();
+      }
+
+      function moveFullStep(stepId, direction) {
+        const index = fullSteps.findIndex((step) => step.id === stepId);
+        const target = index + direction;
+        if (index < 0 || target < 0 || target >= fullSteps.length) return;
+
+        const nextOrder = fullSteps.map((step) => step.id);
+        const [moved] = nextOrder.splice(index, 1);
+        nextOrder.splice(target, 0, moved);
+        fullSettings.customOrder = nextOrder;
+        saveStoredSettings();
+        resetDisplay();
+        updateFullLabels();
+      }
+
+      function deleteFullStep(stepId) {
+        const deleted = new Set(fullSettings.deletedStepIds || []);
+        deleted.add(stepId);
+        fullSettings.deletedStepIds = Array.from(deleted);
+        fullSettings.customOrder = (fullSettings.customOrder || []).filter((id) => id !== stepId);
+        saveStoredSettings();
+        resetDisplay();
+        updateFullLabels();
+      }
+
       function fullStartCountdown() {
         return Math.max(0, Number(getTempoSettings("biceps").startCountdown));
       }
@@ -1366,7 +1599,7 @@
       function setFullSegment(index, announce = true) {
         fullSegmentIndex = index;
         if (fullSegmentIndex >= fullSegments.length) {
-          renderCompletion("Workout Complete");
+          renderCompletion("Workout Complete", announce);
           return;
         }
 
@@ -1511,7 +1744,7 @@
         updateStartButtonLabel();
       }
 
-      function renderCompletion(label) {
+      function renderCompletion(label, announce = true) {
         phaseLabel.textContent = label;
         clock.textContent = "0";
         cycleMeta.textContent = "Great work.";
@@ -1522,7 +1755,9 @@
         exerciseTimeValue.textContent = formatClock(0);
         finished = true;
         sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
-        playTone("complete");
+        if (announce) {
+          playTone("complete");
+        }
         pauseTimer();
       }
 
@@ -1631,6 +1866,22 @@
       [fullRestRange, fullSwitchRestRange, fullSidePlankRange, fullRepsRange, fullIncludeHipsToggle].forEach((input) => {
         input.addEventListener("input", handleFullInput);
         input.addEventListener("change", handleFullInput);
+      });
+      fullWorkoutList.addEventListener("click", (event) => {
+        const button = event.target.closest?.("button[data-action]");
+        if (!button) return;
+
+        const stepId = button.dataset.stepId;
+        const action = button.dataset.action;
+        if (action === "jump") {
+          jumpToFullStep(stepId);
+        } else if (action === "up") {
+          moveFullStep(stepId, -1);
+        } else if (action === "down") {
+          moveFullStep(stepId, 1);
+        } else if (action === "delete") {
+          deleteFullStep(stepId);
+        }
       });
       hideNumbersToggle.addEventListener("change", applyNumberVisibility);
       hideTrafficToggle.addEventListener("change", applyTrafficVisibility);
