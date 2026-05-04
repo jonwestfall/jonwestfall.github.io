@@ -1613,7 +1613,9 @@
               logActivity: step.type === "manual_hold" ? "Manual Hold" : "Manual Reps",
               logType: "manual",
               logTarget: step.type === "manual_hold" ? `${step.durationSeconds}s hold` : `${step.reps} reps`,
-              logPlannedSeconds: null
+              logPlannedSeconds: null,
+              logPlannedReps: step.type === "manual_reps" ? step.reps : null,
+              logRepsTarget: step.type === "manual_reps" ? step.reps : null
             });
           }
           appendTimedSegment(step, stepIndex, {
@@ -1650,6 +1652,7 @@
               logType: "exercise",
               logTarget: `${reps} reps${side ? `, ${side}` : ""}`,
               logPlannedSeconds: reps * totalCycle(settings),
+              logPlannedReps: reps,
               logRepsTarget: reps
             });
           });
@@ -1840,8 +1843,9 @@
           target: segment.logTarget || "",
           plannedSeconds: segment.logPlannedSeconds,
           actualSeconds: 0,
+          plannedReps: segment.logPlannedReps || null,
           repsTarget: segment.logRepsTarget || null,
-          repsCompleted: null,
+          repsCompleted: segment.logType === "manual" && segment.logRepsTarget ? segment.logRepsTarget : null,
           skipped: false,
           notes: ""
         };
@@ -1941,6 +1945,7 @@
           target: entry.target,
           plannedSeconds: entry.plannedSeconds,
           actualSeconds: Math.round(entry.actualSeconds),
+          plannedReps: entry.plannedReps,
           repsTarget: entry.repsTarget,
           repsCompleted: entry.repsCompleted,
           skipped: entry.skipped,
@@ -1969,7 +1974,7 @@
 
       function reportCsv() {
         const rows = [
-          ["order", "round", "section", "activity", "type", "completed_reps", "target_reps", "target", "planned_seconds", "actual_seconds", "skipped", "notes"],
+          ["order", "round", "section", "activity", "type", "completed_reps", "planned_reps", "target_reps", "target", "planned_seconds", "actual_seconds", "skipped", "notes"],
           ...workoutReportRows.map((row) => [
             row.order,
             row.round,
@@ -1977,6 +1982,7 @@
             row.activity,
             row.type,
             row.repsCompleted == null ? "" : row.repsCompleted,
+            row.plannedReps == null ? "" : row.plannedReps,
             row.repsTarget == null ? "" : row.repsTarget,
             row.target,
             row.plannedSeconds == null ? "" : row.plannedSeconds,
