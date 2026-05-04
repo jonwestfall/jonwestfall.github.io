@@ -86,6 +86,7 @@
       .tab {
         border: none;
         border-radius: 999px;
+        flex: 0 1 auto;
         background: rgba(255, 255, 255, 0.18);
         color: #edfbff;
         min-height: 46px;
@@ -183,7 +184,7 @@
       .time-grid {
         margin-top: 10px;
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
       }
 
@@ -219,6 +220,12 @@
 
       .session strong {
         color: #ffffff;
+      }
+
+      .session-note {
+        width: 100%;
+        color: #d4ecf8;
+        font-size: 1rem;
       }
 
       .progress {
@@ -264,6 +271,10 @@
       #reset-btn {
         background: #ffd7d2;
         color: #4c130b;
+      }
+
+      .hidden {
+        display: none !important;
       }
 
       .sliders {
@@ -328,6 +339,35 @@
         touch-action: manipulation;
       }
 
+      .full-summary {
+        margin-top: 16px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .summary-card {
+        border-radius: 12px;
+        background: #eaf8ff;
+        padding: 12px;
+      }
+
+      .summary-card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .summary-card strong {
+        display: block;
+        margin-top: 4px;
+        color: var(--ink);
+        font-size: 1.2rem;
+      }
+
       .guidance {
         margin-top: 16px;
         border-radius: 12px;
@@ -368,6 +408,23 @@
         .time-grid {
           grid-template-columns: 1fr;
         }
+
+        .tabs {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .tab {
+          width: 100%;
+        }
+
+        .session {
+          font-size: 1.35rem;
+        }
+
+        .full-summary {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -390,6 +447,9 @@
         <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="triceps">
           Tricep Extensions
         </button>
+        <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="full">
+          Full Workout
+        </button>
       </div>
 
       <section class="panel" aria-live="polite">
@@ -407,17 +467,21 @@
                 <p class="time-title">Time Remaining</p>
                 <p class="time-value" id="remaining-time-value">03:45</p>
               </div>
+              <div class="time-card hidden" id="exercise-time-card">
+                <p class="time-title">Exercise Left</p>
+                <p class="time-value" id="exercise-time-value">03:45</p>
+              </div>
             </div>
-            <div class="session">
+            <div class="session" id="session-meta">
               <div>Set <strong id="set-display">1</strong>/<strong id="set-total-display">1</strong></div>
               <div>Rep <strong id="rep-display">15</strong></div>
             </div>
             <div class="progress" aria-hidden="true">
               <div id="phase-fill" class="fill"></div>
             </div>
-          <div class="controls">
-              <button id="start-btn" type="button">Paused</button>
-              <button id="reset-btn" type="button">Reset</button>
+            <div class="controls">
+              <button id="start-btn" type="button" aria-label="Start or pause timer">Start</button>
+              <button id="reset-btn" type="button" aria-label="Reset timer">Reset</button>
             </div>
           </div>
           <div class="traffic" aria-label="Tempo traffic light">
@@ -427,7 +491,7 @@
           </div>
         </div>
 
-        <div class="sliders">
+        <div class="sliders tempo-settings" id="tempo-settings">
           <div class="slider-row">
             <label for="up-range">
               Seconds Up
@@ -511,6 +575,67 @@
           </div>
         </div>
 
+        <div class="sliders full-settings hidden" id="full-workout-config">
+          <div class="slider-row">
+            <label for="full-rest-range">
+              Standard Rest Between Exercises
+              <span id="full-rest-value">30s</span>
+            </label>
+            <input id="full-rest-range" type="range" min="0" max="120" step="5" value="30" />
+          </div>
+
+          <div class="slider-row">
+            <label for="full-switch-rest-range">
+              Tricep Arm-Switch Rest
+              <span id="full-switch-rest-value">15s</span>
+            </label>
+            <input id="full-switch-rest-range" type="range" min="0" max="60" step="5" value="15" />
+          </div>
+
+          <div class="slider-row">
+            <label for="full-side-plank-range">
+              Side Plank Duration
+              <span id="full-side-plank-value">15s</span>
+            </label>
+            <input id="full-side-plank-range" type="range" min="5" max="90" step="5" value="15" />
+          </div>
+
+          <div class="slider-row">
+            <label for="full-reps-range">
+              Standard Reps
+              <span id="full-reps-value">15</span>
+            </label>
+            <input id="full-reps-range" type="range" min="1" max="30" step="1" value="15" />
+          </div>
+
+          <div class="slider-row toggle-row">
+            <input id="full-include-hips-toggle" type="checkbox" checked />
+            <label for="full-include-hips-toggle">Include Hip Hinges</label>
+          </div>
+
+          <div class="full-summary" aria-label="Full workout summary">
+            <div class="summary-card">
+              <p>Rounds</p>
+              <strong id="full-round-count">3</strong>
+            </div>
+            <div class="summary-card">
+              <p>Steps</p>
+              <strong id="full-step-count">21</strong>
+            </div>
+            <div class="summary-card">
+              <p>Planned Time</p>
+              <strong id="full-planned-time">00:00</strong>
+            </div>
+          </div>
+        </div>
+
+        <div class="sliders sound-settings">
+          <div class="slider-row toggle-row">
+            <input id="mute-tones-toggle" type="checkbox" />
+            <label for="mute-tones-toggle">Mute segment tones</label>
+          </div>
+        </div>
+
         <div class="guidance" id="guidance-box">
           <h2>Bicep Curls Guidance</h2>
           <p><strong>Rest:</strong> 90-180s for strength, 30-90s for hypertrophy.</p>
@@ -521,6 +646,8 @@
     </main>
 
     <script>
+      const STORAGE_KEY = "strength-tempo-timer-settings-v2";
+
       const presets = {
         biceps: {
           up: 2,
@@ -558,11 +685,19 @@
         }
       };
 
+      const defaultFullSettings = {
+        standardRest: 30,
+        armSwitchRest: 15,
+        sidePlankDuration: 15,
+        standardReps: 15,
+        includeHipHinges: true
+      };
+
       const phases = [
         { key: "up", label: "Seconds Up" },
         { key: "hold", label: "Time Under Tension" },
         { key: "down", label: "Seconds Down" },
-        { key: "reset", label: "Reset Stance" }
+        { key: "reset", label: "Reset" }
       ];
 
       const tabs = Array.from(document.querySelectorAll(".tab"));
@@ -575,6 +710,9 @@
       const lightGreen = document.getElementById("light-green");
       const trafficBox = document.querySelector(".traffic");
       const guidanceBox = document.getElementById("guidance-box");
+      const tempoSettingsBox = document.getElementById("tempo-settings");
+      const fullSettingsBox = document.getElementById("full-workout-config");
+      const sessionMeta = document.getElementById("session-meta");
 
       const upRange = document.getElementById("up-range");
       const holdRange = document.getElementById("hold-range");
@@ -587,6 +725,14 @@
       const repDirection = document.getElementById("rep-direction");
       const hideNumbersToggle = document.getElementById("hide-numbers-toggle");
       const hideTrafficToggle = document.getElementById("hide-traffic-toggle");
+      const muteTonesToggle = document.getElementById("mute-tones-toggle");
+
+      const fullRestRange = document.getElementById("full-rest-range");
+      const fullSwitchRestRange = document.getElementById("full-switch-rest-range");
+      const fullSidePlankRange = document.getElementById("full-side-plank-range");
+      const fullRepsRange = document.getElementById("full-reps-range");
+      const fullIncludeHipsToggle = document.getElementById("full-include-hips-toggle");
+
       const upValue = document.getElementById("up-value");
       const holdValue = document.getElementById("hold-value");
       const downValue = document.getElementById("down-value");
@@ -595,16 +741,30 @@
       const setsValue = document.getElementById("sets-value");
       const startRepsValue = document.getElementById("start-reps-value");
       const startCountdownValue = document.getElementById("start-countdown-value");
-      const setDisplay = document.getElementById("set-display");
-      const setTotalDisplay = document.getElementById("set-total-display");
-      const repDisplay = document.getElementById("rep-display");
+      const fullRestValue = document.getElementById("full-rest-value");
+      const fullSwitchRestValue = document.getElementById("full-switch-rest-value");
+      const fullSidePlankValue = document.getElementById("full-side-plank-value");
+      const fullRepsValue = document.getElementById("full-reps-value");
+      const fullRoundCount = document.getElementById("full-round-count");
+      const fullStepCount = document.getElementById("full-step-count");
+      const fullPlannedTime = document.getElementById("full-planned-time");
       const totalTimeValue = document.getElementById("total-time-value");
       const remainingTimeValue = document.getElementById("remaining-time-value");
+      const exerciseTimeCard = document.getElementById("exercise-time-card");
+      const exerciseTimeValue = document.getElementById("exercise-time-value");
 
       const startBtn = document.getElementById("start-btn");
       const resetBtn = document.getElementById("reset-btn");
 
+      const stored = loadStoredSettings();
+      let exerciseSettings = {
+        biceps: { ...pickTempoSettings(presets.biceps), ...(stored.exerciseSettings?.biceps || {}) },
+        triceps: { ...pickTempoSettings(presets.triceps), ...(stored.exerciseSettings?.triceps || {}) }
+      };
+      let fullSettings = { ...defaultFullSettings, ...(stored.fullSettings || {}) };
+
       let activeExercise = "biceps";
+      let hasLoadedExercise = false;
       let timer = null;
       let isRunning = false;
       let phaseIndex = 0;
@@ -618,19 +778,52 @@
       let isCountdownActive = false;
       let preStartRemaining = 0;
       let hasWorkoutStarted = false;
+      let audioContext = null;
 
-      function getSettings() {
+      let fullSteps = [];
+      let fullSegments = [];
+      let fullSegmentIndex = 0;
+
+      function pickTempoSettings(source) {
         return {
-          up: Number(upRange.value),
-          hold: Number(holdRange.value),
-          down: Number(downRange.value),
-          reset: Number(resetRange.value),
-          setRest: Number(setRestRange.value),
-          sets: Number(setsRange.value),
-          startReps: Number(startRepsRange.value),
-          startCountdown: Number(startCountdownRange.value),
-          repDirection: repDirection.value
+          up: Number(source.up),
+          hold: Number(source.hold),
+          down: Number(source.down),
+          reset: Number(source.reset),
+          setRest: Number(source.setRest),
+          sets: Number(source.sets),
+          startReps: Number(source.startReps),
+          startCountdown: Number(source.startCountdown),
+          repDirection: source.repDirection || "up"
         };
+      }
+
+      function loadStoredSettings() {
+        try {
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          return raw ? JSON.parse(raw) : {};
+        } catch (error) {
+          return {};
+        }
+      }
+
+      function saveStoredSettings() {
+        try {
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+              exerciseSettings,
+              fullSettings,
+              display: {
+                hideNumbers: hideNumbersToggle.checked,
+                hideTraffic: hideTrafficToggle.checked,
+                muteTones: muteTonesToggle.checked
+              }
+            })
+          );
+        } catch (error) {
+          // localStorage can be unavailable in private browsing or locked-down webviews.
+        }
       }
 
       function formatSeconds(n) {
@@ -648,7 +841,59 @@
         return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
       }
 
-      function updateSliderLabels() {
+      function readTempoControls() {
+        return {
+          up: Number(upRange.value),
+          hold: Number(holdRange.value),
+          down: Number(downRange.value),
+          reset: Number(resetRange.value),
+          setRest: Number(setRestRange.value),
+          sets: Number(setsRange.value),
+          startReps: Number(startRepsRange.value),
+          startCountdown: Number(startCountdownRange.value),
+          repDirection: repDirection.value
+        };
+      }
+
+      function readFullControls() {
+        return {
+          standardRest: Number(fullRestRange.value),
+          armSwitchRest: Number(fullSwitchRestRange.value),
+          sidePlankDuration: Number(fullSidePlankRange.value),
+          standardReps: Number(fullRepsRange.value),
+          includeHipHinges: fullIncludeHipsToggle.checked
+        };
+      }
+
+      function applyTempoControls(settings) {
+        upRange.value = String(settings.up);
+        holdRange.value = String(settings.hold);
+        downRange.value = String(settings.down);
+        resetRange.value = String(settings.reset);
+        setRestRange.value = String(settings.setRest);
+        setsRange.value = String(settings.sets);
+        startRepsRange.value = String(settings.startReps);
+        startCountdownRange.value = String(settings.startCountdown);
+        repDirection.value = settings.repDirection;
+      }
+
+      function applyFullControls() {
+        fullRestRange.value = String(fullSettings.standardRest);
+        fullSwitchRestRange.value = String(fullSettings.armSwitchRest);
+        fullSidePlankRange.value = String(fullSettings.sidePlankDuration);
+        fullRepsRange.value = String(fullSettings.standardReps);
+        fullIncludeHipsToggle.checked = Boolean(fullSettings.includeHipHinges);
+      }
+
+      function getTempoSettings(source) {
+        return exerciseSettings[source];
+      }
+
+      function getSettings() {
+        return activeExercise === "full" ? getTempoSettings("biceps") : readTempoControls();
+      }
+
+      function updateTempoLabels() {
         upValue.textContent = formatSeconds(upRange.value);
         holdValue.textContent = formatSeconds(holdRange.value);
         downValue.textContent = formatSeconds(downRange.value);
@@ -657,12 +902,39 @@
         setsValue.textContent = String(setsRange.value);
         startRepsValue.textContent = String(startRepsRange.value);
         startCountdownValue.textContent = formatSeconds(startCountdownRange.value);
-        setTotalDisplay.textContent = String(setsRange.value);
+      }
+
+      function updateFullLabels() {
+        fullRestValue.textContent = formatSeconds(fullRestRange.value);
+        fullSwitchRestValue.textContent = formatSeconds(fullSwitchRestRange.value);
+        fullSidePlankValue.textContent = formatSeconds(fullSidePlankRange.value);
+        fullRepsValue.textContent = String(fullRepsRange.value);
+        buildFullWorkout();
+        fullRoundCount.textContent = "3";
+        fullStepCount.textContent = String(fullSteps.length);
+        fullPlannedTime.textContent = formatClock(totalFullWorkoutSeconds());
+      }
+
+      function handleTempoInput() {
+        updateTempoLabels();
+        if (activeExercise === "biceps" || activeExercise === "triceps") {
+          exerciseSettings[activeExercise] = readTempoControls();
+          saveStoredSettings();
+        }
         if (!isRunning) {
           resetDisplay();
           return;
         }
         renderTimeTotals(getSettings());
+      }
+
+      function handleFullInput() {
+        fullSettings = readFullControls();
+        updateFullLabels();
+        saveStoredSettings();
+        if (!isRunning && activeExercise === "full") {
+          resetDisplay();
+        }
       }
 
       function totalCycle(settings) {
@@ -681,18 +953,23 @@
         return Math.max(1, settings.startReps);
       }
 
-      function renderSession() {
-        setDisplay.textContent = String(currentSet);
-        repDisplay.textContent = String(currentRep);
+      function renderTempoSession(settings) {
+        sessionMeta.innerHTML = `
+          <div>Set <strong>${currentSet}</strong>/<strong>${settings.sets}</strong></div>
+          <div>Rep <strong>${currentRep}</strong></div>
+        `;
       }
 
       function renderTimeTotals(settings) {
-        const total = totalWorkoutSeconds(settings);
+        const total = activeExercise === "full" ? totalFullWorkoutSeconds() : totalWorkoutSeconds(settings);
         if (!isRunning || workoutRemaining <= 0 || workoutRemaining > total) {
           workoutRemaining = total;
         }
         totalTimeValue.textContent = formatClock(total);
         remainingTimeValue.textContent = formatClock(workoutRemaining);
+        if (activeExercise !== "full") {
+          exerciseTimeValue.textContent = formatClock(workoutRemaining);
+        }
       }
 
       function applyNumberVisibility() {
@@ -701,18 +978,25 @@
         clock.style.visibility = visibility;
         totalTimeValue.style.visibility = visibility;
         remainingTimeValue.style.visibility = visibility;
+        exerciseTimeValue.style.visibility = visibility;
+        saveStoredSettings();
       }
 
       function applyTrafficVisibility() {
         trafficBox.style.display = hideTrafficToggle.checked ? "none" : "grid";
+        saveStoredSettings();
       }
 
       function updateStartButtonLabel() {
         if (isRunning) {
-          startBtn.textContent = "Started";
+          startBtn.textContent = "Pause";
           return;
         }
-        startBtn.textContent = "Paused";
+        if (finished) {
+          startBtn.textContent = "Start";
+          return;
+        }
+        startBtn.textContent = hasWorkoutStarted || isCountdownActive ? "Resume" : "Start";
       }
 
       function setTrafficLight(color) {
@@ -722,6 +1006,16 @@
       }
 
       function renderGuidance(exercise) {
+        if (exercise === "full") {
+          guidanceBox.innerHTML = `
+            <h2>Full Workout Guidance</h2>
+            <p><strong>Sequence:</strong> Three rounds with biceps, triceps, band/dumbbell work, and core.</p>
+            <p><strong>Core:</strong> Crunches in rounds 1 and 3, Side Plank in round 2.</p>
+            <p><strong>Timing:</strong> Biceps and triceps use their current tab settings; other reps use biceps tempo.</p>
+          `;
+          return;
+        }
+
         const { guidanceTitle, guidanceLines } = presets[exercise];
         guidanceBox.innerHTML = `
           <h2>${guidanceTitle}</h2>
@@ -756,41 +1050,36 @@
             : currentRep > repsPerSet(settings);
 
         if (!done) {
-          renderSession();
+          renderTempoSession(settings);
           return;
         }
 
         if (currentSet >= settings.sets) {
-          phaseLabel.textContent = "Workout Complete";
-          clock.textContent = "0";
-          cycleMeta.textContent = "Great work.";
-          phaseFill.style.width = "100%";
-          setTrafficLight("green");
-          workoutRemaining = 0;
-          remainingTimeValue.textContent = formatClock(workoutRemaining);
-          finished = true;
-          pauseTimer();
+          renderCompletion("Workout Complete");
           return;
         }
 
         currentSet += 1;
         currentRep = initialRep(settings);
         setResting = settings.setRest > 0;
-        renderSession();
+        renderTempoSession(settings);
       }
 
-      function setPhase(idx, settings) {
+      function setPhase(idx, settings, announce = true) {
         if (finished) return;
 
         if (setResting) {
           phaseIndex = idx;
           phaseDuration = settings.setRest;
           remaining = phaseDuration;
-          phaseLabel.textContent = "Rest Between Sets";
+          phaseLabel.textContent = "Rest";
           clock.textContent = String(remaining);
           cycleMeta.textContent = `Set ${currentSet} starts next`;
           phaseFill.style.width = "0%";
           setTrafficLight("green");
+          if (announce) {
+            playTone("rest");
+          }
           return;
         }
 
@@ -798,7 +1087,6 @@
         phaseDuration = phaseSeconds(settings, idx);
         remaining = phaseDuration;
 
-        // Skip zero-duration phases.
         if (phaseDuration === 0) {
           return advancePhase(settings);
         }
@@ -814,6 +1102,9 @@
           setTrafficLight("green");
         } else {
           setTrafficLight("yellow");
+        }
+        if (announce) {
+          playTone(phaseKey);
         }
       }
 
@@ -855,7 +1146,269 @@
         advancePhase(settings);
       }
 
+      function buildFullWorkoutSteps() {
+        const rest = Math.max(0, Number(fullSettings.standardRest));
+        const standardReps = Math.max(1, Number(fullSettings.standardReps));
+        const bicepsReps = repsPerSet(getTempoSettings("biceps"));
+        const tricepsReps = repsPerSet(getTempoSettings("triceps"));
+        const steps = [];
+
+        for (let round = 1; round <= 3; round += 1) {
+          steps.push({
+            type: "reps",
+            round,
+            name: "Bicep Curls",
+            reps: bicepsReps,
+            timingSource: "biceps",
+            afterRestSeconds: rest
+          });
+          steps.push({
+            type: "triceps_two_arm",
+            round,
+            name: "Tricep Extensions",
+            repsPerArm: tricepsReps,
+            timingSource: "triceps",
+            armSwitchRestSeconds: Math.max(0, Number(fullSettings.armSwitchRest)),
+            afterRestSeconds: rest
+          });
+          steps.push({
+            type: "reps",
+            round,
+            name: "Squats: Exercise Band",
+            reps: standardReps,
+            timingSource: "biceps",
+            afterRestSeconds: rest
+          });
+          if (fullSettings.includeHipHinges) {
+            steps.push({
+              type: "reps",
+              round,
+              name: "Hip Hinges: Exercise Band",
+              reps: standardReps,
+              timingSource: "biceps",
+              afterRestSeconds: rest
+            });
+          }
+          steps.push({
+            type: "reps",
+            round,
+            name: "Shoulder Shrugs: Dumbbell",
+            reps: standardReps,
+            timingSource: "biceps",
+            afterRestSeconds: rest
+          });
+          steps.push({
+            type: "reps",
+            round,
+            name: "Upright Band Rows",
+            reps: standardReps,
+            timingSource: "biceps",
+            afterRestSeconds: rest
+          });
+
+          if (round === 2) {
+            steps.push({
+              type: "timed_hold",
+              round,
+              name: "Side Plank",
+              durationSeconds: Math.max(1, Number(fullSettings.sidePlankDuration)),
+              afterRestSeconds: rest
+            });
+          } else {
+            steps.push({
+              type: "reps",
+              round,
+              name: "Crunches",
+              reps: standardReps,
+              timingSource: "biceps",
+              afterRestSeconds: round === 3 ? 0 : rest
+            });
+          }
+        }
+
+        return steps;
+      }
+
+      function buildFullWorkout() {
+        fullSteps = buildFullWorkoutSteps();
+        fullSegments = [];
+
+        fullSteps.forEach((step, stepIndex) => {
+          const workGroup = `step-${stepIndex}`;
+          if (step.type === "reps") {
+            appendRepSegments(step, stepIndex, step.reps, "", workGroup);
+          }
+          if (step.type === "triceps_two_arm") {
+            appendRepSegments(step, stepIndex, step.repsPerArm, "Arm 1", workGroup);
+            appendTimedSegment(step, stepIndex, {
+              type: "switch",
+              label: "Switch Arms",
+              side: "Switch Arms",
+              duration: step.armSwitchRestSeconds,
+              color: "green",
+              groupId: workGroup
+            });
+            appendRepSegments(step, stepIndex, step.repsPerArm, "Arm 2", workGroup);
+          }
+          if (step.type === "timed_hold") {
+            appendTimedSegment(step, stepIndex, {
+              type: "timed_hold",
+              label: "Timed Hold",
+              duration: step.durationSeconds,
+              color: "red",
+              groupId: workGroup
+            });
+          }
+          appendTimedSegment(step, stepIndex, {
+            type: "rest",
+            label: "Rest",
+            duration: step.afterRestSeconds,
+            color: "green",
+            groupId: `rest-${stepIndex}`
+          });
+        });
+      }
+
+      function appendRepSegments(step, stepIndex, reps, side, groupId) {
+        const settings = getTempoSettings(step.timingSource);
+        for (let rep = 1; rep <= reps; rep += 1) {
+          phases.forEach((phase) => {
+            const duration = Math.max(0, Number(settings[phase.key]));
+            if (duration === 0) return;
+            fullSegments.push({
+              type: "phase",
+              label: phase.label,
+              phaseKey: phase.key,
+              duration,
+              stepIndex,
+              rep,
+              reps,
+              side,
+              color: phase.key === "hold" ? "red" : phase.key === "reset" ? "green" : "yellow",
+              groupId
+            });
+          });
+        }
+      }
+
+      function appendTimedSegment(step, stepIndex, segment) {
+        const duration = Math.max(0, Number(segment.duration));
+        if (duration === 0) return;
+        fullSegments.push({
+          stepIndex,
+          duration,
+          ...segment
+        });
+      }
+
+      function totalFullWorkoutSeconds() {
+        buildFullWorkout();
+        const workout = fullSegments.reduce((sum, segment) => sum + segment.duration, 0);
+        return workout + fullStartCountdown();
+      }
+
+      function fullStartCountdown() {
+        return Math.max(0, Number(getTempoSettings("biceps").startCountdown));
+      }
+
+      function currentFullGroupRemaining() {
+        const segment = fullSegments[fullSegmentIndex];
+        if (!segment) return 0;
+        let total = remaining;
+        for (let idx = fullSegmentIndex + 1; idx < fullSegments.length; idx += 1) {
+          if (fullSegments[idx].groupId !== segment.groupId) break;
+          total += fullSegments[idx].duration;
+        }
+        return total;
+      }
+
+      function renderFullSegment() {
+        const segment = fullSegments[fullSegmentIndex];
+        const step = fullSteps[segment?.stepIndex];
+        if (!segment || !step) {
+          renderCompletion("Workout Complete");
+          return;
+        }
+
+        phaseLabel.textContent = segment.label;
+        clock.textContent = String(remaining);
+        cycleMeta.textContent = `Round ${step.round}/3`;
+        exerciseTimeCard.classList.remove("hidden");
+        totalTimeValue.textContent = formatClock(totalFullWorkoutSeconds());
+        remainingTimeValue.textContent = formatClock(workoutRemaining);
+        exerciseTimeValue.textContent = formatClock(currentFullGroupRemaining());
+        phaseFill.style.width = phaseDuration > 0
+          ? `${Math.min(100, Math.round(((phaseDuration - remaining) / phaseDuration) * 100))}%`
+          : "100%";
+        setTrafficLight(segment.color);
+
+        const sideText = segment.side ? `<div>Side <strong>${segment.side}</strong></div>` : "";
+        const repText = segment.rep ? `<div>Rep <strong>${segment.rep}</strong>/<strong>${segment.reps}</strong></div>` : "";
+        sessionMeta.innerHTML = `
+          <div>Round <strong>${step.round}</strong>/<strong>3</strong></div>
+          <div>Exercise <strong>${step.name}</strong></div>
+          ${sideText}
+          ${repText}
+          <div class="session-note">${nextFullInstruction()}</div>
+        `;
+      }
+
+      function nextFullInstruction() {
+        const next = fullSegments[fullSegmentIndex + 1];
+        if (!next) return "Finish this segment to complete the workout.";
+        const nextStep = fullSteps[next.stepIndex];
+        if (!nextStep) return "";
+        if (next.type === "rest") return "Next: rest before moving on.";
+        if (next.type === "switch") return "Next: switch arms.";
+        return `Next: ${nextStep.name}${next.side ? `, ${next.side}` : ""}.`;
+      }
+
+      function setFullSegment(index, announce = true) {
+        fullSegmentIndex = index;
+        if (fullSegmentIndex >= fullSegments.length) {
+          renderCompletion("Workout Complete");
+          return;
+        }
+
+        const segment = fullSegments[fullSegmentIndex];
+        phaseDuration = segment.duration;
+        remaining = phaseDuration;
+        if (phaseDuration === 0) {
+          setFullSegment(fullSegmentIndex + 1, announce);
+          return;
+        }
+        renderFullSegment();
+        if (announce) {
+          playTone(segment.type === "phase" ? segment.phaseKey : segment.type);
+        }
+      }
+
+      function advanceFullSegment() {
+        phaseFill.style.width = "100%";
+        setFullSegment(fullSegmentIndex + 1);
+      }
+
+      function tickFullWorkout() {
+        if (workoutRemaining > 0) {
+          workoutRemaining -= 1;
+          remainingTimeValue.textContent = formatClock(workoutRemaining);
+        }
+
+        if (remaining > 1) {
+          remaining -= 1;
+          renderFullSegment();
+          return;
+        }
+
+        advanceFullSegment();
+      }
+
       function startWorkoutTimer(forceFreshPhase = false) {
+        if (activeExercise === "full") {
+          startFullWorkoutTimer(forceFreshPhase);
+          return;
+        }
+
         const settings = getSettings();
         if (forceFreshPhase) {
           phaseIndex = 0;
@@ -870,11 +1423,25 @@
         updateStartButtonLabel();
       }
 
+      function startFullWorkoutTimer(forceFreshPhase = false) {
+        if (forceFreshPhase || fullSegments.length === 0) {
+          buildFullWorkout();
+          setFullSegment(0);
+        } else if (remaining <= 0) {
+          setFullSegment(fullSegmentIndex);
+        }
+        isCountdownActive = false;
+        hasWorkoutStarted = true;
+        isRunning = true;
+        timer = setInterval(tickFullWorkout, 1000);
+        updateStartButtonLabel();
+      }
+
       function renderPreStartCountdown() {
-        const total = Math.max(1, Number(startCountdownRange.value));
+        const total = Math.max(1, activeExercise === "full" ? fullStartCountdown() : Number(startCountdownRange.value));
         phaseLabel.textContent = "Get Ready";
         clock.textContent = String(preStartRemaining);
-        cycleMeta.textContent = "Starting soon";
+        cycleMeta.textContent = activeExercise === "full" ? "Full Workout starts soon" : "Starting soon";
         phaseFill.style.width = `${Math.min(100, Math.round(((total - preStartRemaining) / total) * 100))}%`;
         setTrafficLight("green");
       }
@@ -898,7 +1465,8 @@
 
       function startPreCountdown() {
         const settings = getSettings();
-        preStartRemaining = settings.startCountdown;
+        preStartRemaining = activeExercise === "full" ? fullStartCountdown() : settings.startCountdown;
+        createAudioContext();
         if (preStartRemaining <= 0) {
           startWorkoutTimer();
           return;
@@ -907,6 +1475,7 @@
         isCountdownActive = true;
         isRunning = true;
         renderPreStartCountdown();
+        playTone("countdown");
         timer = setInterval(tickStartCountdown, 1000);
         updateStartButtonLabel();
       }
@@ -929,6 +1498,7 @@
           startPreCountdown();
           return;
         }
+        createAudioContext();
         startWorkoutTimer();
       }
 
@@ -941,6 +1511,21 @@
         updateStartButtonLabel();
       }
 
+      function renderCompletion(label) {
+        phaseLabel.textContent = label;
+        clock.textContent = "0";
+        cycleMeta.textContent = "Great work.";
+        phaseFill.style.width = "100%";
+        setTrafficLight("green");
+        workoutRemaining = 0;
+        remainingTimeValue.textContent = formatClock(workoutRemaining);
+        exerciseTimeValue.textContent = formatClock(0);
+        finished = true;
+        sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
+        playTone("complete");
+        pauseTimer();
+      }
+
       function resetDisplay() {
         pauseTimer();
         const settings = getSettings();
@@ -951,30 +1536,80 @@
         finished = false;
         hasWorkoutStarted = false;
         isCountdownActive = false;
-        preStartRemaining = settings.startCountdown;
-        workoutRemaining = totalWorkoutSeconds(settings);
-        renderSession();
+        fullSegmentIndex = 0;
+        preStartRemaining = activeExercise === "full" ? fullStartCountdown() : settings.startCountdown;
+        workoutRemaining = activeExercise === "full" ? totalFullWorkoutSeconds() : totalWorkoutSeconds(settings);
         renderTimeTotals(settings);
-        setPhase(0, settings);
+
+        if (activeExercise === "full") {
+          exerciseTimeCard.classList.remove("hidden");
+          buildFullWorkout();
+          setFullSegment(0, false);
+        } else {
+          exerciseTimeCard.classList.add("hidden");
+          renderTempoSession(settings);
+          setPhase(0, settings, false);
+        }
         updateStartButtonLabel();
       }
 
+      function createAudioContext() {
+        if (audioContext || muteTonesToggle.checked) return;
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        audioContext = new AudioContext();
+      }
+
+      function playTone(kind) {
+        if (muteTonesToggle.checked) return;
+        createAudioContext();
+        if (!audioContext) return;
+
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        const toneMap = {
+          up: 520,
+          hold: 660,
+          down: 440,
+          reset: 392,
+          rest: 330,
+          switch: 588,
+          timed_hold: 660,
+          countdown: 494,
+          complete: 784
+        };
+        oscillator.type = "sine";
+        oscillator.frequency.value = toneMap[kind] || 520;
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.16);
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + 0.18);
+      }
+
       function loadExercise(exercise) {
+        if (hasLoadedExercise && (activeExercise === "biceps" || activeExercise === "triceps")) {
+          exerciseSettings[activeExercise] = readTempoControls();
+          saveStoredSettings();
+        }
+
         activeExercise = exercise;
-        const { up, hold, down } = presets[exercise];
-        const { reset, setRest, sets, startReps, startCountdown, repDirection: direction } = presets[exercise];
-        upRange.value = String(up);
-        holdRange.value = String(hold);
-        downRange.value = String(down);
-        resetRange.value = String(reset);
-        setRestRange.value = String(setRest);
-        setsRange.value = String(sets);
-        startRepsRange.value = String(startReps);
-        startCountdownRange.value = String(startCountdown);
-        repDirection.value = direction;
+        tempoSettingsBox.classList.toggle("hidden", exercise === "full");
+        fullSettingsBox.classList.toggle("hidden", exercise !== "full");
         renderGuidance(exercise);
-        updateSliderLabels();
+
+        if (exercise === "full") {
+          applyFullControls();
+          updateFullLabels();
+        } else {
+          applyTempoControls(getTempoSettings(exercise));
+          updateTempoLabels();
+        }
         resetDisplay();
+        hasLoadedExercise = true;
       }
 
       tabs.forEach((tab) => {
@@ -990,15 +1625,26 @@
       });
 
       [upRange, holdRange, downRange, resetRange, setRestRange, setsRange, startRepsRange, startCountdownRange].forEach((input) => {
-        input.addEventListener("input", updateSliderLabels);
+        input.addEventListener("input", handleTempoInput);
       });
-      repDirection.addEventListener("change", updateSliderLabels);
+      repDirection.addEventListener("change", handleTempoInput);
+      [fullRestRange, fullSwitchRestRange, fullSidePlankRange, fullRepsRange, fullIncludeHipsToggle].forEach((input) => {
+        input.addEventListener("input", handleFullInput);
+        input.addEventListener("change", handleFullInput);
+      });
       hideNumbersToggle.addEventListener("change", applyNumberVisibility);
       hideTrafficToggle.addEventListener("change", applyTrafficVisibility);
+      muteTonesToggle.addEventListener("change", saveStoredSettings);
 
       startBtn.addEventListener("click", toggleStartPause);
       resetBtn.addEventListener("click", resetDisplay);
 
+      if (stored.display) {
+        hideNumbersToggle.checked = Boolean(stored.display.hideNumbers);
+        hideTrafficToggle.checked = Boolean(stored.display.hideTraffic);
+        muteTonesToggle.checked = Boolean(stored.display.muteTones);
+      }
+      applyFullControls();
       loadExercise(activeExercise);
       applyNumberVisibility();
       applyTrafficVisibility();
