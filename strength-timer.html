@@ -1938,12 +1938,13 @@
 
       function endWorkoutEarly() {
         if (activeExercise !== "full") return;
+        const completedNaturally = phaseLabel.textContent === "Workout Complete";
         pauseTimer();
         finished = true;
         workoutRemaining = 0;
         remainingTimeValue.textContent = formatClock(0);
         exerciseTimeValue.textContent = formatClock(0);
-        phaseLabel.textContent = "Workout Ended";
+        phaseLabel.textContent = completedNaturally ? "Workout Complete" : "Workout Ended";
         clock.textContent = "0";
         cycleMeta.textContent = "Report ready.";
         phaseFill.style.width = "100%";
@@ -1951,7 +1952,7 @@
         nextSectionBtn.classList.add("hidden");
         endRestBtn.classList.add("hidden");
         endWorkoutBtn.classList.add("hidden");
-        renderWorkoutReport("Workout ended early.");
+        renderWorkoutReport(completedNaturally ? "Workout complete." : "Workout ended early.");
       }
 
       function setWorkoutJsonStatus(message) {
@@ -2138,7 +2139,9 @@
             timer = null;
           }
           isRunning = false;
-          hasWorkoutStarted = true;
+          if (logSegment) {
+            hasWorkoutStarted = true;
+          }
           updateStartButtonLabel();
         }
       }
@@ -2330,14 +2333,11 @@
         sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
         nextSectionBtn.classList.add("hidden");
         endRestBtn.classList.add("hidden");
-        endWorkoutBtn.classList.add("hidden");
+        endWorkoutBtn.classList.toggle("hidden", activeExercise !== "full" || !workoutSessionStartedAt);
         if (announce) {
           playTone("complete");
         }
         pauseTimer();
-        if (activeExercise === "full" && workoutSessionStartedAt) {
-          renderWorkoutReport("Workout complete.");
-        }
       }
 
       function resetDisplay() {
