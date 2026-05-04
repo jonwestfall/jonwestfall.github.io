@@ -273,6 +273,11 @@
         color: #4c130b;
       }
 
+      #next-section-btn {
+        background: #ffd968;
+        color: #3b2c00;
+      }
+
       .hidden {
         display: none !important;
       }
@@ -569,6 +574,7 @@
             </div>
             <div class="controls">
               <button id="start-btn" type="button" aria-label="Start or pause timer">Start</button>
+              <button id="next-section-btn" class="hidden" type="button" aria-label="Advance to next workout section">Next Section</button>
               <button id="reset-btn" type="button" aria-label="Reset timer">Reset</button>
             </div>
           </div>
@@ -850,6 +856,7 @@
       const exerciseTimeValue = document.getElementById("exercise-time-value");
 
       const startBtn = document.getElementById("start-btn");
+      const nextSectionBtn = document.getElementById("next-section-btn");
       const resetBtn = document.getElementById("reset-btn");
 
       const stored = loadStoredSettings();
@@ -1166,6 +1173,7 @@
 
       function setPhase(idx, settings, announce = true) {
         if (finished) return;
+        nextSectionBtn.classList.add("hidden");
 
         if (setResting) {
           phaseIndex = idx;
@@ -1274,47 +1282,43 @@
           });
           steps.push({
             id: `round-${round}-squats-exercise-band`,
-            type: "reps",
+            type: "manual_reps",
             round,
             name: "Squats: Exercise Band",
             reps: standardReps,
-            timingSource: "biceps",
             afterRestSeconds: rest
           });
           if (fullSettings.includeHipHinges) {
             steps.push({
               id: `round-${round}-hip-hinges-exercise-band`,
-              type: "reps",
+              type: "manual_reps",
               round,
               name: "Hip Hinges: Exercise Band",
               reps: standardReps,
-              timingSource: "biceps",
               afterRestSeconds: rest
             });
           }
           steps.push({
             id: `round-${round}-shoulder-shrugs-dumbbell`,
-            type: "reps",
+            type: "manual_reps",
             round,
             name: "Shoulder Shrugs: Dumbbell",
             reps: standardReps,
-            timingSource: "biceps",
             afterRestSeconds: rest
           });
           steps.push({
             id: `round-${round}-upright-band-rows`,
-            type: "reps",
+            type: "manual_reps",
             round,
             name: "Upright Band Rows",
             reps: standardReps,
-            timingSource: "biceps",
             afterRestSeconds: rest
           });
 
           if (round === 2) {
             steps.push({
               id: `round-${round}-side-plank`,
-              type: "timed_hold",
+              type: "manual_hold",
               round,
               name: "Side Plank",
               durationSeconds: Math.max(1, Number(fullSettings.sidePlankDuration)),
@@ -1323,11 +1327,10 @@
           } else {
             steps.push({
               id: `round-${round}-crunches`,
-              type: "reps",
+              type: "manual_reps",
               round,
               name: "Crunches",
               reps: standardReps,
-              timingSource: "biceps",
               afterRestSeconds: round === 3 ? 0 : rest
             });
           }
@@ -1381,13 +1384,15 @@
             });
             appendRepSegments(step, stepIndex, step.repsPerArm, "Arm 2", workGroup);
           }
-          if (step.type === "timed_hold") {
-            appendTimedSegment(step, stepIndex, {
-              type: "timed_hold",
-              label: "Timed Hold",
-              duration: step.durationSeconds,
-              color: "red",
-              groupId: workGroup
+          if (step.type === "manual_reps" || step.type === "manual_hold") {
+            fullSegments.push({
+              type: "manual",
+              label: "Manual Exercise",
+              duration: 0,
+              stepIndex,
+              color: step.type === "manual_hold" ? "red" : "yellow",
+              groupId: workGroup,
+              isManual: true
             });
           }
           appendTimedSegment(step, stepIndex, {
@@ -1447,8 +1452,8 @@
             step.armSwitchRestSeconds +
             step.afterRestSeconds;
         }
-        if (step.type === "timed_hold") {
-          return step.durationSeconds + step.afterRestSeconds;
+        if (step.type === "manual_reps" || step.type === "manual_hold") {
+          return step.afterRestSeconds;
         }
         return step.afterRestSeconds || 0;
       }
@@ -1461,8 +1466,11 @@
         if (step.type === "triceps_two_arm") {
           return `${step.repsPerArm} reps Arm 1, ${step.armSwitchRestSeconds}s switch, ${step.repsPerArm} reps Arm 2${rest}`;
         }
-        if (step.type === "timed_hold") {
-          return `${step.durationSeconds}s timed hold${rest}`;
+        if (step.type === "manual_reps") {
+          return `${step.reps} reps, manual advance${rest}`;
+        }
+        if (step.type === "manual_hold") {
+          return `${step.durationSeconds}s hold, manual advance${rest}`;
         }
         return rest ? `${step.afterRestSeconds}s rest` : "";
       }
@@ -1547,6 +1555,7 @@
       function currentFullGroupRemaining() {
         const segment = fullSegments[fullSegmentIndex];
         if (!segment) return 0;
+        if (segment.isManual) return fullStepSeconds(fullSteps[segment.stepIndex]);
         let total = remaining;
         for (let idx = fullSegmentIndex + 1; idx < fullSegments.length; idx += 1) {
           if (fullSegments[idx].groupId !== segment.groupId) break;
@@ -1563,30 +1572,41 @@
           return;
         }
 
-        phaseLabel.textContent = segment.label;
-        clock.textContent = String(remaining);
+        phaseLabel.textContent = segment.isManual
+          ? (step.type === "manual_hold" ? "Manual Hold" : "Manual Reps")
+          : segment.label;
+        clock.textContent = segment.isManual ? "Done?" : String(remaining);
         cycleMeta.textContent = `Round ${step.round}/3`;
         exerciseTimeCard.classList.remove("hidden");
         totalTimeValue.textContent = formatClock(totalFullWorkoutSeconds());
         remainingTimeValue.textContent = formatClock(workoutRemaining);
         exerciseTimeValue.textContent = formatClock(currentFullGroupRemaining());
-        phaseFill.style.width = phaseDuration > 0
+        phaseFill.style.width = segment.isManual
+          ? "0%"
+          : phaseDuration > 0
           ? `${Math.min(100, Math.round(((phaseDuration - remaining) / phaseDuration) * 100))}%`
           : "100%";
         setTrafficLight(segment.color);
 
         const sideText = segment.side ? `<div>Side <strong>${segment.side}</strong></div>` : "";
         const repText = segment.rep ? `<div>Rep <strong>${segment.rep}</strong>/<strong>${segment.reps}</strong></div>` : "";
+        const manualText = segment.isManual
+          ? `<div>${step.type === "manual_hold" ? "Hold" : "Reps"} <strong>${step.type === "manual_hold" ? `${step.durationSeconds}s` : step.reps}</strong></div>`
+          : "";
         sessionMeta.innerHTML = `
           <div>Round <strong>${step.round}</strong>/<strong>3</strong></div>
           <div>Exercise <strong>${step.name}</strong></div>
           ${sideText}
           ${repText}
+          ${manualText}
           <div class="session-note">${nextFullInstruction()}</div>
         `;
+        nextSectionBtn.classList.toggle("hidden", !segment.isManual);
       }
 
       function nextFullInstruction() {
+        const current = fullSegments[fullSegmentIndex];
+        if (current?.isManual) return "Complete this at your own pace, then tap Next Section.";
         const next = fullSegments[fullSegmentIndex + 1];
         if (!next) return "Finish this segment to complete the workout.";
         const nextStep = fullSteps[next.stepIndex];
@@ -1606,19 +1626,34 @@
         const segment = fullSegments[fullSegmentIndex];
         phaseDuration = segment.duration;
         remaining = phaseDuration;
-        if (phaseDuration === 0) {
+        if (phaseDuration === 0 && !segment.isManual) {
           setFullSegment(fullSegmentIndex + 1, announce);
           return;
         }
         renderFullSegment();
         if (announce) {
-          playTone(segment.type === "phase" ? segment.phaseKey : segment.type);
+          playTone(segment.isManual ? "manual" : segment.type === "phase" ? segment.phaseKey : segment.type);
+        }
+        if (segment.isManual) {
+          pauseTimer();
+          hasWorkoutStarted = true;
+          updateStartButtonLabel();
         }
       }
 
       function advanceFullSegment() {
         phaseFill.style.width = "100%";
         setFullSegment(fullSegmentIndex + 1);
+        if (
+          activeExercise === "full" &&
+          !finished &&
+          !isRunning &&
+          !fullSegments[fullSegmentIndex]?.isManual
+        ) {
+          isRunning = true;
+          timer = setInterval(tickFullWorkout, 1000);
+          updateStartButtonLabel();
+        }
       }
 
       function tickFullWorkout() {
@@ -1662,6 +1697,13 @@
           setFullSegment(0);
         } else if (remaining <= 0) {
           setFullSegment(fullSegmentIndex);
+        }
+        if (fullSegments[fullSegmentIndex]?.isManual) {
+          hasWorkoutStarted = true;
+          isCountdownActive = false;
+          isRunning = false;
+          updateStartButtonLabel();
+          return;
         }
         isCountdownActive = false;
         hasWorkoutStarted = true;
@@ -1755,6 +1797,7 @@
         exerciseTimeValue.textContent = formatClock(0);
         finished = true;
         sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
+        nextSectionBtn.classList.add("hidden");
         if (announce) {
           playTone("complete");
         }
@@ -1782,6 +1825,7 @@
           setFullSegment(0, false);
         } else {
           exerciseTimeCard.classList.add("hidden");
+          nextSectionBtn.classList.add("hidden");
           renderTempoSession(settings);
           setPhase(0, settings, false);
         }
@@ -1810,7 +1854,7 @@
           reset: 392,
           rest: 330,
           switch: 588,
-          timed_hold: 660,
+          manual: 588,
           countdown: 494,
           complete: 784
         };
@@ -1888,6 +1932,7 @@
       muteTonesToggle.addEventListener("change", saveStoredSettings);
 
       startBtn.addEventListener("click", toggleStartPause);
+      nextSectionBtn.addEventListener("click", advanceFullSegment);
       resetBtn.addEventListener("click", resetDisplay);
 
       if (stored.display) {
