@@ -853,6 +853,7 @@
                     <th>Round</th>
                     <th>Section</th>
                     <th>Activity</th>
+                    <th>Completed</th>
                     <th>Target</th>
                     <th>Planned</th>
                     <th>Actual</th>
@@ -1648,7 +1649,8 @@
               logActivity: side ? `${side} Work` : "Exercise",
               logType: "exercise",
               logTarget: `${reps} reps${side ? `, ${side}` : ""}`,
-              logPlannedSeconds: reps * totalCycle(settings)
+              logPlannedSeconds: reps * totalCycle(settings),
+              logRepsTarget: reps
             });
           });
         }
@@ -1756,6 +1758,48 @@
         updateStartButtonLabel();
       }
 
+      function nextSegmentAfterCurrentLog() {
+        const current = fullSegments[fullSegmentIndex];
+        if (!current) return fullSegments.length;
+        for (let idx = fullSegmentIndex + 1; idx < fullSegments.length; idx += 1) {
+          if (fullSegments[idx].logKey !== current.logKey) {
+            return idx;
+          }
+        }
+        return fullSegments.length;
+      }
+
+      function skipCurrentTimedBlock() {
+        if (activeExercise !== "full") return;
+        const segment = fullSegments[fullSegmentIndex];
+        if (segment?.type !== "phase") return;
+
+        markActiveExerciseSkipped();
+        pauseActiveLog();
+        const nextIndex = nextSegmentAfterCurrentLog();
+        workoutRemaining = sumSegmentsFrom(nextIndex);
+        remainingTimeValue.textContent = formatClock(workoutRemaining);
+        setFullSegment(nextIndex);
+        if (
+          activeExercise === "full" &&
+          !finished &&
+          !isRunning &&
+          !fullSegments[fullSegmentIndex]?.isManual
+        ) {
+          isRunning = true;
+          timer = setInterval(tickFullWorkout, 1000);
+          updateStartButtonLabel();
+        }
+      }
+
+      function handleNextSection() {
+        if (activeExercise === "full" && fullSegments[fullSegmentIndex]?.type === "phase") {
+          skipCurrentTimedBlock();
+          return;
+        }
+        advanceFullSegment();
+      }
+
       function moveFullStep(stepId, direction) {
         const index = fullSteps.findIndex((step) => step.id === stepId);
         const target = index + direction;
@@ -1796,6 +1840,8 @@
           target: segment.logTarget || "",
           plannedSeconds: segment.logPlannedSeconds,
           actualSeconds: 0,
+          repsTarget: segment.logRepsTarget || null,
+          repsCompleted: null,
           skipped: false,
           notes: ""
         };
@@ -1803,8 +1849,24 @@
         return entry;
       }
 
+      function completedRepsForSegment(segment) {
+        if (segment?.type !== "phase" || !segment.logRepsTarget) return null;
+        const currentRep = Number(segment.rep) || 0;
+        const completed = segment.phaseKey === "reset" ? currentRep : currentRep - 1;
+        return Math.min(segment.logRepsTarget, Math.max(0, completed));
+      }
+
+      function updateActiveExerciseReps(segment = fullSegments[fullSegmentIndex]) {
+        const completed = completedRepsForSegment(segment);
+        if (completed == null) return;
+        const entry = currentLogEntry();
+        if (!entry || entry.type !== "exercise") return;
+        entry.repsCompleted = Math.max(entry.repsCompleted || 0, completed);
+      }
+
       function accrueActiveLog() {
         if (!activeLogKey || !activeLogStartedAt) return;
+        updateActiveExerciseReps();
         const entry = currentLogEntry();
         if (entry) {
           entry.actualSeconds += Math.max(0, (Date.now() - activeLogStartedAt) / 1000);
@@ -1825,6 +1887,7 @@
             createLogEntry(segment);
           }
         }
+        updateActiveExerciseReps(segment);
         if (!activeLogStartedAt) {
           activeLogStartedAt = Date.now();
         }
@@ -1845,6 +1908,15 @@
         if (!entry || entry.type !== "rest") return;
         entry.skipped = true;
         entry.notes = "Rest ended early.";
+      }
+
+      function markActiveExerciseSkipped() {
+        updateActiveExerciseReps();
+        const entry = currentLogEntry();
+        if (!entry || entry.type !== "exercise") return;
+        entry.skipped = true;
+        const completed = entry.repsCompleted == null ? 0 : entry.repsCompleted;
+        entry.notes = `Advanced early after ${completed} of ${entry.repsTarget || "?"} reps.`;
       }
 
       function clearWorkoutLog() {
@@ -1869,6 +1941,8 @@
           target: entry.target,
           plannedSeconds: entry.plannedSeconds,
           actualSeconds: Math.round(entry.actualSeconds),
+          repsTarget: entry.repsTarget,
+          repsCompleted: entry.repsCompleted,
           skipped: entry.skipped,
           notes: entry.notes
         }));
@@ -1882,25 +1956,28 @@
               <td>${escapeHtml(row.round)}</td>
               <td>${escapeHtml(row.section)}</td>
               <td>${escapeHtml(row.activity)}</td>
+              <td>${row.repsTarget ? `${row.repsCompleted || 0}/${row.repsTarget} reps` : ""}</td>
               <td>${escapeHtml(row.target)}</td>
               <td>${row.plannedSeconds == null ? "Manual" : formatDuration(row.plannedSeconds)}</td>
               <td>${formatDuration(row.actualSeconds)}</td>
               <td>${escapeHtml([row.skipped ? "Skipped/ended early" : "", row.notes].filter(Boolean).join(" "))}</td>
             </tr>
           `).join("")
-          : `<tr><td colspan="8">No workout activity has been logged yet.</td></tr>`;
+          : `<tr><td colspan="9">No workout activity has been logged yet.</td></tr>`;
         workoutReport.classList.remove("hidden");
       }
 
       function reportCsv() {
         const rows = [
-          ["order", "round", "section", "activity", "type", "target", "planned_seconds", "actual_seconds", "skipped", "notes"],
+          ["order", "round", "section", "activity", "type", "completed_reps", "target_reps", "target", "planned_seconds", "actual_seconds", "skipped", "notes"],
           ...workoutReportRows.map((row) => [
             row.order,
             row.round,
             row.section,
             row.activity,
             row.type,
+            row.repsCompleted == null ? "" : row.repsCompleted,
+            row.repsTarget == null ? "" : row.repsTarget,
             row.target,
             row.plannedSeconds == null ? "" : row.plannedSeconds,
             row.actualSeconds,
@@ -2095,7 +2172,7 @@
           ${manualText}
           <div class="session-note">${nextFullInstruction()}</div>
         `;
-        nextSectionBtn.classList.toggle("hidden", !segment.isManual);
+        nextSectionBtn.classList.toggle("hidden", !workoutSessionStartedAt || !(segment.isManual || segment.type === "phase"));
         endRestBtn.classList.toggle("hidden", segment.type !== "rest");
         endWorkoutBtn.classList.toggle("hidden", !workoutSessionStartedAt || finished);
       }
@@ -2229,6 +2306,7 @@
           setFullSegment(fullSegmentIndex, true, true);
         } else {
           startLogForSegment(fullSegments[fullSegmentIndex]);
+          renderFullSegment();
         }
         if (fullSegments[fullSegmentIndex]?.isManual) {
           hasWorkoutStarted = true;
@@ -2471,7 +2549,7 @@
       muteTonesToggle.addEventListener("change", saveStoredSettings);
 
       startBtn.addEventListener("click", toggleStartPause);
-      nextSectionBtn.addEventListener("click", advanceFullSegment);
+      nextSectionBtn.addEventListener("click", handleNextSection);
       endRestBtn.addEventListener("click", endCurrentRest);
       endWorkoutBtn.addEventListener("click", endWorkoutEarly);
       resetBtn.addEventListener("click", resetDisplay);
