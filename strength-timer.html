@@ -278,6 +278,16 @@
         color: #3b2c00;
       }
 
+      #end-rest-btn {
+        background: #e1f4fb;
+        color: var(--ink);
+      }
+
+      #end-workout-btn {
+        background: #ffe7a0;
+        color: #3b2c00;
+      }
+
       .hidden {
         display: none !important;
       }
@@ -423,6 +433,50 @@
         margin: 0;
         color: var(--muted);
         font-weight: 700;
+      }
+
+      .workout-report {
+        margin-top: 16px;
+        border-radius: 12px;
+        background: #eaf8ff;
+        padding: 12px;
+      }
+
+      .workout-report h2 {
+        margin: 0 0 8px;
+        font-size: 1.08rem;
+      }
+
+      .workout-report-summary {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      .report-table-wrap {
+        overflow-x: auto;
+      }
+
+      .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 680px;
+        background: #f8fdff;
+      }
+
+      .report-table th,
+      .report-table td {
+        border-bottom: 1px solid #c2dce8;
+        padding: 8px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .report-table th {
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
       }
 
       .workout-list h2 {
@@ -623,6 +677,8 @@
             <div class="controls">
               <button id="start-btn" type="button" aria-label="Start or pause timer">Start</button>
               <button id="next-section-btn" class="hidden" type="button" aria-label="Advance to next workout section">Next Section</button>
+              <button id="end-rest-btn" class="hidden" type="button" aria-label="End rest and advance">End Rest</button>
+              <button id="end-workout-btn" class="hidden" type="button" aria-label="End workout and show report">End Workout</button>
               <button id="reset-btn" type="button" aria-label="Reset timer">Reset</button>
             </div>
           </div>
@@ -783,6 +839,31 @@
             <p id="workout-json-status" class="workout-json-status" role="status"></p>
           </div>
 
+          <div id="workout-report" class="workout-report hidden" aria-live="polite">
+            <h2>Workout Report</h2>
+            <p id="workout-report-summary" class="workout-report-summary"></p>
+            <div class="workout-tool-actions">
+              <button id="download-report-csv-btn" type="button">Save Report CSV</button>
+            </div>
+            <div class="report-table-wrap">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Round</th>
+                    <th>Section</th>
+                    <th>Activity</th>
+                    <th>Target</th>
+                    <th>Planned</th>
+                    <th>Actual</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody id="workout-report-body"></tbody>
+              </table>
+            </div>
+          </div>
+
           <div class="workout-list" aria-label="Full workout exercise list">
             <h2>Workout Sections</h2>
             <div class="workout-items" id="full-workout-list"></div>
@@ -923,7 +1004,13 @@
 
       const startBtn = document.getElementById("start-btn");
       const nextSectionBtn = document.getElementById("next-section-btn");
+      const endRestBtn = document.getElementById("end-rest-btn");
+      const endWorkoutBtn = document.getElementById("end-workout-btn");
       const resetBtn = document.getElementById("reset-btn");
+      const workoutReport = document.getElementById("workout-report");
+      const workoutReportSummary = document.getElementById("workout-report-summary");
+      const workoutReportBody = document.getElementById("workout-report-body");
+      const downloadReportCsvBtn = document.getElementById("download-report-csv-btn");
 
       const stored = loadStoredSettings();
       let exerciseSettings = {
@@ -952,6 +1039,11 @@
       let fullSteps = [];
       let fullSegments = [];
       let fullSegmentIndex = 0;
+      let workoutLog = [];
+      let activeLogKey = "";
+      let activeLogStartedAt = 0;
+      let workoutSessionStartedAt = 0;
+      let workoutReportRows = [];
 
       function pickTempoSettings(source) {
         return {
@@ -1008,6 +1100,23 @@
           return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
         }
         return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+
+      function formatDuration(totalSeconds) {
+        const seconds = Math.max(0, Math.round(totalSeconds));
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins <= 0) return `${secs}s`;
+        return `${mins}m ${String(secs).padStart(2, "0")}s`;
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
       }
 
       function clampNumber(value, fallback, min, max) {
@@ -1278,6 +1387,7 @@
       function setPhase(idx, settings, announce = true) {
         if (finished) return;
         nextSectionBtn.classList.add("hidden");
+        endRestBtn.classList.add("hidden");
 
         if (setResting) {
           phaseIndex = idx;
@@ -1288,6 +1398,7 @@
           cycleMeta.textContent = `Set ${currentSet} starts next`;
           phaseFill.style.width = "0%";
           setTrafficLight("green");
+          endRestBtn.classList.remove("hidden");
           if (announce) {
             playTone("rest");
           }
@@ -1496,7 +1607,12 @@
               stepIndex,
               color: step.type === "manual_hold" ? "red" : "yellow",
               groupId: workGroup,
-              isManual: true
+              isManual: true,
+              logKey: `${step.id}:manual`,
+              logActivity: step.type === "manual_hold" ? "Manual Hold" : "Manual Reps",
+              logType: "manual",
+              logTarget: step.type === "manual_hold" ? `${step.durationSeconds}s hold` : `${step.reps} reps`,
+              logPlannedSeconds: null
             });
           }
           appendTimedSegment(step, stepIndex, {
@@ -1511,6 +1627,8 @@
 
       function appendRepSegments(step, stepIndex, reps, side, groupId) {
         const settings = getTempoSettings(step.timingSource);
+        const cleanSide = side.replace(/\s+/g, "-").toLowerCase() || "all";
+        const logKey = `${step.id}:work:${cleanSide}`;
         for (let rep = 1; rep <= reps; rep += 1) {
           phases.forEach((phase) => {
             const duration = Math.max(0, Number(settings[phase.key]));
@@ -1525,7 +1643,12 @@
               reps,
               side,
               color: phase.key === "hold" ? "red" : phase.key === "reset" ? "green" : "yellow",
-              groupId
+              groupId,
+              logKey,
+              logActivity: side ? `${side} Work` : "Exercise",
+              logType: "exercise",
+              logTarget: `${reps} reps${side ? `, ${side}` : ""}`,
+              logPlannedSeconds: reps * totalCycle(settings)
             });
           });
         }
@@ -1537,6 +1660,11 @@
         fullSegments.push({
           stepIndex,
           duration,
+          logKey: `${step.id}:${segment.type}`,
+          logActivity: segment.type === "rest" ? "Rest" : segment.label,
+          logType: segment.type,
+          logTarget: segment.type === "rest" ? `${duration}s rest` : `${duration}s`,
+          logPlannedSeconds: duration,
           ...segment
         });
       }
@@ -1624,7 +1752,7 @@
         workoutRemaining = sumSegmentsFrom(targetSegmentIndex);
         hasWorkoutStarted = true;
         isCountdownActive = false;
-        setFullSegment(targetSegmentIndex, false);
+        setFullSegment(targetSegmentIndex, false, true);
         updateStartButtonLabel();
       }
 
@@ -1650,6 +1778,180 @@
         saveStoredSettings();
         resetDisplay();
         updateFullLabels();
+      }
+
+      function currentLogEntry() {
+        return workoutLog.find((entry) => entry.key === activeLogKey);
+      }
+
+      function createLogEntry(segment) {
+        const step = fullSteps[segment.stepIndex];
+        const entry = {
+          key: segment.logKey,
+          round: step?.round || "",
+          section: step?.name || "",
+          sectionId: step?.id || "",
+          activity: segment.logActivity || segment.label,
+          type: segment.logType || segment.type,
+          target: segment.logTarget || "",
+          plannedSeconds: segment.logPlannedSeconds,
+          actualSeconds: 0,
+          skipped: false,
+          notes: ""
+        };
+        workoutLog.push(entry);
+        return entry;
+      }
+
+      function accrueActiveLog() {
+        if (!activeLogKey || !activeLogStartedAt) return;
+        const entry = currentLogEntry();
+        if (entry) {
+          entry.actualSeconds += Math.max(0, (Date.now() - activeLogStartedAt) / 1000);
+        }
+        activeLogStartedAt = 0;
+      }
+
+      function startLogForSegment(segment) {
+        if (!segment?.logKey) return;
+        if (!workoutSessionStartedAt) {
+          workoutSessionStartedAt = Date.now();
+          workoutReport.classList.add("hidden");
+        }
+        if (activeLogKey !== segment.logKey) {
+          accrueActiveLog();
+          activeLogKey = segment.logKey;
+          if (!currentLogEntry()) {
+            createLogEntry(segment);
+          }
+        }
+        if (!activeLogStartedAt) {
+          activeLogStartedAt = Date.now();
+        }
+      }
+
+      function pauseActiveLog() {
+        accrueActiveLog();
+      }
+
+      function stopActiveLog() {
+        accrueActiveLog();
+        activeLogKey = "";
+        activeLogStartedAt = 0;
+      }
+
+      function markActiveRestSkipped() {
+        const entry = currentLogEntry();
+        if (!entry || entry.type !== "rest") return;
+        entry.skipped = true;
+        entry.notes = "Rest ended early.";
+      }
+
+      function clearWorkoutLog() {
+        workoutLog = [];
+        activeLogKey = "";
+        activeLogStartedAt = 0;
+        workoutSessionStartedAt = 0;
+        workoutReportRows = [];
+        workoutReportBody.innerHTML = "";
+        workoutReportSummary.textContent = "";
+        workoutReport.classList.add("hidden");
+      }
+
+      function renderWorkoutReport(status = "Workout ended.") {
+        stopActiveLog();
+        workoutReportRows = workoutLog.map((entry, index) => ({
+          order: index + 1,
+          round: entry.round,
+          section: entry.section,
+          activity: entry.activity,
+          type: entry.type,
+          target: entry.target,
+          plannedSeconds: entry.plannedSeconds,
+          actualSeconds: Math.round(entry.actualSeconds),
+          skipped: entry.skipped,
+          notes: entry.notes
+        }));
+
+        const totalSeconds = workoutReportRows.reduce((sum, row) => sum + row.actualSeconds, 0);
+        workoutReportSummary.textContent = `${status} Logged ${workoutReportRows.length} item${workoutReportRows.length === 1 ? "" : "s"} over ${formatDuration(totalSeconds)}.`;
+        workoutReportBody.innerHTML = workoutReportRows.length > 0
+          ? workoutReportRows.map((row) => `
+            <tr>
+              <td>${row.order}</td>
+              <td>${escapeHtml(row.round)}</td>
+              <td>${escapeHtml(row.section)}</td>
+              <td>${escapeHtml(row.activity)}</td>
+              <td>${escapeHtml(row.target)}</td>
+              <td>${row.plannedSeconds == null ? "Manual" : formatDuration(row.plannedSeconds)}</td>
+              <td>${formatDuration(row.actualSeconds)}</td>
+              <td>${escapeHtml([row.skipped ? "Skipped/ended early" : "", row.notes].filter(Boolean).join(" "))}</td>
+            </tr>
+          `).join("")
+          : `<tr><td colspan="8">No workout activity has been logged yet.</td></tr>`;
+        workoutReport.classList.remove("hidden");
+      }
+
+      function reportCsv() {
+        const rows = [
+          ["order", "round", "section", "activity", "type", "target", "planned_seconds", "actual_seconds", "skipped", "notes"],
+          ...workoutReportRows.map((row) => [
+            row.order,
+            row.round,
+            row.section,
+            row.activity,
+            row.type,
+            row.target,
+            row.plannedSeconds == null ? "" : row.plannedSeconds,
+            row.actualSeconds,
+            row.skipped ? "true" : "false",
+            row.notes
+          ])
+        ];
+        return rows.map((row) => row.map((value) => {
+          const text = String(value ?? "");
+          return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+        }).join(",")).join("\n");
+      }
+
+      function downloadReportCsv() {
+        if (workoutReportRows.length === 0) {
+          renderWorkoutReport("Workout report created.");
+        }
+        const csv = reportCsv();
+        const filename = `strength-workout-report-${new Date().toISOString().slice(0, 10)}.csv`;
+        if (typeof Blob === "undefined" || typeof URL === "undefined") {
+          workoutJsonText.value = csv;
+          setWorkoutJsonStatus("CSV placed in the text box because file download is unavailable here.");
+          return;
+        }
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      }
+
+      function endWorkoutEarly() {
+        if (activeExercise !== "full") return;
+        pauseTimer();
+        finished = true;
+        workoutRemaining = 0;
+        remainingTimeValue.textContent = formatClock(0);
+        exerciseTimeValue.textContent = formatClock(0);
+        phaseLabel.textContent = "Workout Ended";
+        clock.textContent = "0";
+        cycleMeta.textContent = "Report ready.";
+        phaseFill.style.width = "100%";
+        setTrafficLight("green");
+        nextSectionBtn.classList.add("hidden");
+        endRestBtn.classList.add("hidden");
+        endWorkoutBtn.classList.add("hidden");
+        renderWorkoutReport("Workout ended early.");
       }
 
       function setWorkoutJsonStatus(message) {
@@ -1793,6 +2095,8 @@
           <div class="session-note">${nextFullInstruction()}</div>
         `;
         nextSectionBtn.classList.toggle("hidden", !segment.isManual);
+        endRestBtn.classList.toggle("hidden", segment.type !== "rest");
+        endWorkoutBtn.classList.toggle("hidden", !workoutSessionStartedAt || finished);
       }
 
       function nextFullInstruction() {
@@ -1807,7 +2111,7 @@
         return `Next: ${nextStep.name}${next.side ? `, ${next.side}` : ""}.`;
       }
 
-      function setFullSegment(index, announce = true) {
+      function setFullSegment(index, announce = true, logSegment = true) {
         fullSegmentIndex = index;
         if (fullSegmentIndex >= fullSegments.length) {
           renderCompletion("Workout Complete", announce);
@@ -1818,15 +2122,22 @@
         phaseDuration = segment.duration;
         remaining = phaseDuration;
         if (phaseDuration === 0 && !segment.isManual) {
-          setFullSegment(fullSegmentIndex + 1, announce);
+          setFullSegment(fullSegmentIndex + 1, announce, logSegment);
           return;
+        }
+        if (logSegment) {
+          startLogForSegment(segment);
         }
         renderFullSegment();
         if (announce) {
           playTone(segment.isManual ? "manual" : segment.type === "phase" ? segment.phaseKey : segment.type);
         }
         if (segment.isManual) {
-          pauseTimer();
+          if (timer) {
+            clearInterval(timer);
+            timer = null;
+          }
+          isRunning = false;
           hasWorkoutStarted = true;
           updateStartButtonLabel();
         }
@@ -1834,6 +2145,7 @@
 
       function advanceFullSegment() {
         phaseFill.style.width = "100%";
+        endRestBtn.classList.add("hidden");
         setFullSegment(fullSegmentIndex + 1);
         if (
           activeExercise === "full" &&
@@ -1844,6 +2156,30 @@
           isRunning = true;
           timer = setInterval(tickFullWorkout, 1000);
           updateStartButtonLabel();
+        }
+      }
+
+      function endCurrentRest() {
+        if (activeExercise === "full" && fullSegments[fullSegmentIndex]?.type === "rest") {
+          if (workoutRemaining > 0) {
+            workoutRemaining = Math.max(0, workoutRemaining - remaining);
+            remainingTimeValue.textContent = formatClock(workoutRemaining);
+          }
+          pauseActiveLog();
+          markActiveRestSkipped();
+          remaining = 0;
+          advanceFullSegment();
+          return;
+        }
+
+        if (setResting) {
+          if (workoutRemaining > 0) {
+            workoutRemaining = Math.max(0, workoutRemaining - remaining);
+            remainingTimeValue.textContent = formatClock(workoutRemaining);
+          }
+          remaining = 0;
+          phaseFill.style.width = "100%";
+          advancePhase(getSettings());
         }
       }
 
@@ -1885,9 +2221,11 @@
       function startFullWorkoutTimer(forceFreshPhase = false) {
         if (forceFreshPhase || fullSegments.length === 0) {
           buildFullWorkout();
-          setFullSegment(0);
+          setFullSegment(0, true, true);
         } else if (remaining <= 0) {
-          setFullSegment(fullSegmentIndex);
+          setFullSegment(fullSegmentIndex, true, true);
+        } else {
+          startLogForSegment(fullSegments[fullSegmentIndex]);
         }
         if (fullSegments[fullSegmentIndex]?.isManual) {
           hasWorkoutStarted = true;
@@ -1969,6 +2307,7 @@
       }
 
       function pauseTimer() {
+        pauseActiveLog();
         isRunning = false;
         if (timer) {
           clearInterval(timer);
@@ -1978,6 +2317,7 @@
       }
 
       function renderCompletion(label, announce = true) {
+        pauseActiveLog();
         phaseLabel.textContent = label;
         clock.textContent = "0";
         cycleMeta.textContent = "Great work.";
@@ -1989,14 +2329,20 @@
         finished = true;
         sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
         nextSectionBtn.classList.add("hidden");
+        endRestBtn.classList.add("hidden");
+        endWorkoutBtn.classList.add("hidden");
         if (announce) {
           playTone("complete");
         }
         pauseTimer();
+        if (activeExercise === "full" && workoutSessionStartedAt) {
+          renderWorkoutReport("Workout complete.");
+        }
       }
 
       function resetDisplay() {
         pauseTimer();
+        clearWorkoutLog();
         const settings = getSettings();
         phaseIndex = 0;
         currentSet = 1;
@@ -2013,10 +2359,12 @@
         if (activeExercise === "full") {
           exerciseTimeCard.classList.remove("hidden");
           buildFullWorkout();
-          setFullSegment(0, false);
+          setFullSegment(0, false, false);
         } else {
           exerciseTimeCard.classList.add("hidden");
           nextSectionBtn.classList.add("hidden");
+          endRestBtn.classList.add("hidden");
+          endWorkoutBtn.classList.add("hidden");
           renderTempoSession(settings);
           setPhase(0, settings, false);
         }
@@ -2124,7 +2472,10 @@
 
       startBtn.addEventListener("click", toggleStartPause);
       nextSectionBtn.addEventListener("click", advanceFullSegment);
+      endRestBtn.addEventListener("click", endCurrentRest);
+      endWorkoutBtn.addEventListener("click", endWorkoutEarly);
       resetBtn.addEventListener("click", resetDisplay);
+      downloadReportCsvBtn.addEventListener("click", downloadReportCsv);
       resetDefaultWorkoutBtn.addEventListener("click", resetDefaultWorkout);
       exportWorkoutBtn.addEventListener("click", exportWorkoutJson);
       importWorkoutBtn.addEventListener("click", importWorkoutJson);
