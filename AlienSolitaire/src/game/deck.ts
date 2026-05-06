@@ -95,24 +95,23 @@ export function shuffleDeck(cards: Card[], seed: string): Card[] {
 
 function foundationOrderedDeck(mode: SuitMode, seed: string): Card[] {
   const random = mulberry32(hashSeed(seed));
-  const targets = foundationTargetsForMode(mode);
-  const progress = Object.fromEntries(activeSuitsForMode(mode).map((suit) => [suit, 0])) as Record<Suit, number>;
+  const slots = foundationSlotsForMode(mode);
+  const progress = Object.fromEntries(slots.map((slot) => [slot.id, 0])) as Record<string, number>;
   const cards: Card[] = [];
 
-  while (cards.length < Object.values(targets).reduce((sum, count) => sum + (count ?? 0), 0)) {
-    const available = activeSuitsForMode(mode).filter((suit) => progress[suit] < (targets[suit] ?? 0));
-    const suit = available[Math.floor(random() * available.length)];
-    const nextIndex = progress[suit];
-    const rank = ((nextIndex % 13) + 1) as Rank;
-    const copyIndex = Math.floor(nextIndex / 13);
+  while (cards.length < slots.length * 13) {
+    const available = slots.filter((slot) => progress[slot.id] < 13);
+    const slot = available[Math.floor(random() * available.length)];
+    const nextIndex = progress[slot.id];
+    const rank = (nextIndex + 1) as Rank;
     cards.push({
-      id: `${suit}-${rank}-${copyIndex}`,
+      id: `${slot.suit}-${rank}-${slot.copyIndex}`,
       rank,
-      suit,
-      copyIndex,
+      suit: slot.suit,
+      copyIndex: slot.copyIndex,
       faceUp: false
     });
-    progress[suit] += 1;
+    progress[slot.id] += 1;
   }
 
   return cards;
