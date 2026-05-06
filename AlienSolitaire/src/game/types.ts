@@ -2,7 +2,7 @@ export type Suit = 'brain' | 'goose' | 'budgie' | 'limo' | 'lake';
 export type Rank = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13;
 export type SuitMode = 1 | 2 | 3 | 4 | 5;
 export type GameStatus = 'playing' | 'won' | 'lost';
-export type ThemeName = 'storm' | 'bungalow' | 'tour';
+export type ThemeName = 'storm' | 'bungalow' | 'tour' | 'light';
 
 export interface Card {
   id: string;

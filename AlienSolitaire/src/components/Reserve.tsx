@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import Card from './Card';
 import type { Card as GameCard } from '../game/types';
 
@@ -8,9 +9,11 @@ interface ReserveProps {
   onSelect: (index: number) => void;
   onMoveToReserve?: (index: number) => void;
   onDoubleClick: (index: number) => void;
+  onDragStart: (index: number, event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
 }
 
-export default function Reserve({ cards, selectedIndex, legalTargets, onSelect, onMoveToReserve, onDoubleClick }: ReserveProps) {
+export default function Reserve({ cards, selectedIndex, legalTargets, onSelect, onMoveToReserve, onDoubleClick, onDragStart, onDragEnd }: ReserveProps) {
   return (
     <section className="reserve-row" aria-label="Reserve cards">
       {cards.map((card, index) => (
@@ -37,6 +40,8 @@ export default function Reserve({ cards, selectedIndex, legalTargets, onSelect, 
               onClick={() => onSelect(index)}
               onPointerDown={() => onSelect(index)}
               onDoubleClick={() => onDoubleClick(index)}
+              onDragStart={(event) => onDragStart(index, event)}
+              onDragEnd={onDragEnd}
             />
           ) : (
             <span className="empty-slot">Reserve</span>

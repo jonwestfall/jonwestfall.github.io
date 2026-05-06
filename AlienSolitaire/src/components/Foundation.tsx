@@ -9,9 +9,10 @@ interface FoundationProps {
   active?: boolean;
   onClick?: () => void;
   onPointerUp?: () => void;
+  onDrop?: () => void;
 }
 
-export default function Foundation({ suit, cards, target, active, onClick, onPointerUp }: FoundationProps) {
+export default function Foundation({ suit, cards, target, active, onClick, onPointerUp, onDrop }: FoundationProps) {
   const suitInfo = SUITS.find((entry) => entry.suit === suit);
   const top = cards.at(-1);
   const nextRank = ((cards.length % 13) + 1) as GameCard['rank'];
@@ -23,6 +24,14 @@ export default function Foundation({ suit, cards, target, active, onClick, onPoi
       className={`foundation target suit-${suit} ${active ? 'legal-target' : ''}`}
       onClick={onClick}
       onPointerUp={onPointerUp}
+      onMouseUp={onPointerUp}
+      onDragOver={(event) => {
+        event.preventDefault();
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop?.();
+      }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') onClick?.();
       }}

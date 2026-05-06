@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import Card from './Card';
 import type { Card as GameCard, Selection } from '../game/types';
 
@@ -9,9 +10,11 @@ interface TableauProps {
   onSelectCard: (columnIndex: number, cardIndex: number) => void;
   onColumnTarget: (columnIndex: number) => void;
   onDoubleClick: (columnIndex: number, cardIndex: number) => void;
+  onDragStartCard: (columnIndex: number, cardIndex: number, event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd: () => void;
 }
 
-export default function Tableau({ columns, selected, legalTargets, hintedColumns, onSelectCard, onColumnTarget, onDoubleClick }: TableauProps) {
+export default function Tableau({ columns, selected, legalTargets, hintedColumns, onSelectCard, onColumnTarget, onDoubleClick, onDragStartCard, onDragEnd }: TableauProps) {
   return (
     <section className="tableau" aria-label="Tableau columns">
       {columns.map((column, columnIndex) => (
@@ -20,6 +23,16 @@ export default function Tableau({ columns, selected, legalTargets, hintedColumns
           key={columnIndex}
           onPointerUp={(event) => {
             if (event.target === event.currentTarget) onColumnTarget(columnIndex);
+          }}
+          onMouseUp={(event) => {
+            if (event.target === event.currentTarget || legalTargets[columnIndex]) onColumnTarget(columnIndex);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            onColumnTarget(columnIndex);
           }}
           onClick={(event) => {
             if (event.target === event.currentTarget) onColumnTarget(columnIndex);
@@ -43,6 +56,8 @@ export default function Tableau({ columns, selected, legalTargets, hintedColumns
                     if (!selected) onSelectCard(columnIndex, cardIndex);
                   }}
                   onDoubleClick={() => onDoubleClick(columnIndex, cardIndex)}
+                  onDragStart={(event) => onDragStartCard(columnIndex, cardIndex, event)}
+                  onDragEnd={onDragEnd}
                 />
               </div>
             );

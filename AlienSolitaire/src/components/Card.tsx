@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import { rankLabel, SUITS } from '../game/deck';
 import type { Card as GameCard } from '../game/types';
 
@@ -9,9 +10,11 @@ interface CardProps {
   onClick?: () => void;
   onDoubleClick?: () => void;
   onPointerDown?: () => void;
+  onDragStart?: (event: DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: () => void;
 }
 
-export default function Card({ card, selected, hinted, compact, onClick, onDoubleClick, onPointerDown }: CardProps) {
+export default function Card({ card, selected, hinted, compact, onClick, onDoubleClick, onPointerDown, onDragStart, onDragEnd }: CardProps) {
   const suit = SUITS.find((entry) => entry.suit === card.suit);
 
   if (!card.faceUp) {
@@ -30,6 +33,9 @@ export default function Card({ card, selected, hinted, compact, onClick, onDoubl
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       onPointerDown={onPointerDown}
+      draggable={Boolean(onDragStart)}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
     >
       <span className="card-corner">
         <strong>{rankLabel(card.rank)}</strong>

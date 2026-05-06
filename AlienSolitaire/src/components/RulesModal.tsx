@@ -9,6 +9,9 @@ export default function RulesModal({ suitMode, onClose }: { suitMode: SuitMode; 
         <p>
           Build every active suit foundation upward from Ace to King. Duplicate-suit modes use repeated Ace-through-King foundation cycles so every card can clear.
         </p>
+        <p>
+          New deals are generated in a seeded, foundation-legal reveal order so every game is theoretically winnable.
+        </p>
         <ul>
           <li>Five tableau columns, two face-up reserves, and a stock that never recycles.</li>
           <li>Single face-up tableau and reserve cards move onto adjacent ranks up or down, regardless of suit.</li>

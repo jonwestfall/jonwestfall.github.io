@@ -68,6 +68,89 @@ button {
     linear-gradient(180deg, #071322 0%, #152944 45%, #07151e 100%);
 }
 
+.theme-light {
+  color: #112033;
+  background: #dcefff;
+}
+
+.theme-light .weather-bg {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 152, 94, 0.24), transparent 16%),
+    radial-gradient(circle at 80% 12%, rgba(48, 153, 255, 0.28), transparent 18%),
+    linear-gradient(180deg, #dff5ff 0%, #b6dcf2 48%, #7dbbd3 100%);
+}
+
+.theme-light .lake {
+  background:
+    repeating-radial-gradient(ellipse at 50% 100%, rgba(14, 114, 158, 0.22) 0 2px, transparent 3px 18px),
+    linear-gradient(180deg, rgba(84, 178, 211, 0.42), rgba(31, 118, 145, 0.72));
+}
+
+.theme-light .board,
+.theme-light .control-panel,
+.theme-light .commentary-panel,
+.theme-light .hint-panel,
+.theme-light .debug-panel,
+.theme-light .result-panel,
+.theme-light .rules-modal {
+  background: rgba(246, 252, 255, 0.88);
+  border-color: rgba(9, 77, 91, 0.22);
+  color: #14263a;
+  box-shadow: 0 22px 80px rgba(42, 89, 112, 0.22);
+}
+
+.theme-light .topbar h1,
+.theme-light .speech strong,
+.theme-light .goose-card strong,
+.theme-light .hint-panel h2,
+.theme-light .debug-panel h2 {
+  color: #14263a;
+  text-shadow: none;
+}
+
+.theme-light .topbar p,
+.theme-light .speech p,
+.theme-light .goose-card p,
+.theme-light .hint-panel p,
+.theme-light .lore-ticker,
+.theme-light .rules-modal li,
+.theme-light .rules-modal p {
+  color: #254961;
+}
+
+.theme-light .tableau-column,
+.theme-light .reserve-slot,
+.theme-light .foundation,
+.theme-light .stock-pile,
+.theme-light .empty-column,
+.theme-light .speech,
+.theme-light .goose-card,
+.theme-light .lore-ticker {
+  background: rgba(255, 255, 255, 0.62);
+  border-color: rgba(21, 105, 83, 0.22);
+}
+
+.theme-light .stats-strip span,
+.theme-light .lifetime-stats span {
+  background: rgba(20, 69, 92, 0.1);
+  color: #254961;
+}
+
+.theme-light .stats-strip strong,
+.theme-light .field,
+.theme-light .pile-caption,
+.theme-light .stock-pile small,
+.theme-light .column-label {
+  color: #17384d;
+}
+
+.theme-light .field input,
+.theme-light .field select {
+  background: rgba(255, 255, 255, 0.8);
+  color: #14263a;
+  border-color: rgba(9, 77, 91, 0.22);
+}
+
 .weather-bg::before {
   content: "";
   position: absolute;
@@ -829,6 +912,28 @@ button {
 .rules-modal p {
   color: #dcfaff;
   line-height: 1.5;
+}
+
+.tutorial-modal ol {
+  padding-left: 22px;
+}
+
+.tutorial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.tutorial-actions button {
+  min-height: 42px;
+  border-radius: 8px;
+  padding: 0 16px;
+  background: linear-gradient(180deg, #b8ff64, #58d36d);
+  color: #06120b;
+  font-weight: 950;
+  cursor: pointer;
 }
 
 .modal-close {

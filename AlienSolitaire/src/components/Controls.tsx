@@ -19,6 +19,7 @@ interface ControlsProps {
   onUndo: () => void;
   onAuto: () => void;
   onRules: () => void;
+  onTutorial: () => void;
   onMute: () => void;
   onTheme: (theme: ThemeName) => void;
   onResetStats: () => void;
@@ -43,6 +44,7 @@ export default function Controls({
   onUndo,
   onAuto,
   onRules,
+  onTutorial,
   onMute,
   onTheme,
   onResetStats
@@ -64,6 +66,7 @@ export default function Controls({
         <button type="button" onClick={onHint}>Hint</button>
         <button type="button" onClick={onUndo}>Undo</button>
         <button type="button" onClick={onRules}>Rules</button>
+        <button type="button" onClick={onTutorial}>Tutorial</button>
         <button type="button" onClick={onMute}>{muted ? 'Muted' : 'Sound'}</button>
       </div>
 
@@ -89,6 +92,7 @@ export default function Controls({
           <option value="storm">Stormy Lake Erie</option>
           <option value="bungalow">Cleveland Bungalow</option>
           <option value="tour">Scottish Weather Goose Tour</option>
+          <option value="light">Lake Erie Daylight</option>
         </select>
       </label>
 

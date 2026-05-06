@@ -1,3 +1,4 @@
+import type { DragEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AlienCommentary from './components/AlienCommentary';
 import Controls from './components/Controls';
@@ -5,6 +6,7 @@ import Foundation from './components/Foundation';
 import Reserve from './components/Reserve';
 import RulesModal from './components/RulesModal';
 import Tableau from './components/Tableau';
+import TutorialModal from './components/TutorialModal';
 import { activeSuitsForMode, dealGame } from './game/deck';
 import { getHint, getHintList } from './game/solverHints';
 import {
@@ -57,7 +59,7 @@ function createGame(mode: SuitMode, seed: string, theme: ThemeName): GameState {
     startedAt: Date.now(),
     elapsed: 0,
     theme,
-    message: 'Lake Erie Advisory: do not trust any column wearing a hoodie.'
+    message: 'Lake Erie Advisory: this deal is Weather Goose certified winnable.'
   };
 }
 
@@ -115,9 +117,11 @@ export default function App() {
     return { game: createGame(1, seed, settings.theme), shouldRecord: true };
   }, [settings.theme]);
   const [muted, setMuted] = useState(settings.muted);
+  const [tutorialSeen, setTutorialSeen] = useState(settings.tutorialSeen);
   const [stats, setStats] = useState<Stats>(() => loadStats());
   const [seedInput, setSeedInput] = useState(initialLoad.game.seed);
   const [showRules, setShowRules] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(!settings.tutorialSeen);
   const [hintLines, setHintLines] = useState<string[]>([]);
   const [hintedColumns, setHintedColumns] = useState<number[]>([]);
   const [state, setState] = useState<GameState>(initialLoad.game);
@@ -125,6 +129,7 @@ export default function App() {
   const winRecorded = useRef(state.status === 'won');
   const lossRecorded = useRef(state.status === 'lost');
   const initialStatsRecorded = useRef(false);
+  const dragSelectionRef = useRef<Selection | null>(null);
   const debugMode = useMemo(() => new URLSearchParams(window.location.search).get('debug') === '1', []);
 
   useEffect(() => {
@@ -145,8 +150,8 @@ export default function App() {
   }, [initialLoad.game.suitMode, initialLoad.shouldRecord]);
 
   useEffect(() => {
-    saveSettings({ muted, theme: state.theme });
-  }, [muted, state.theme]);
+    saveSettings({ muted, theme: state.theme, tutorialSeen });
+  }, [muted, state.theme, tutorialSeen]);
 
   useEffect(() => {
     if (state.status === 'won' && !winRecorded.current) {
@@ -163,30 +168,49 @@ export default function App() {
 
   const activeSuits = activeSuitsForMode(state.suitMode);
 
-  const selectedCards = useMemo(() => {
-    if (!state.selected) return [];
-    if (state.selected.source === 'reserve') return state.reserves[state.selected.reserveIndex] ? [state.reserves[state.selected.reserveIndex] as Card] : [];
-    return getMovableRun(state.tableau[state.selected.columnIndex], state.selected.startIndex) ?? [];
-  }, [state]);
+  const cardsForSelection = useCallback((selection: Selection | null, current: GameState): Card[] => {
+    if (!selection) return [];
+    if (selection.source === 'reserve') return current.reserves[selection.reserveIndex] ? [current.reserves[selection.reserveIndex] as Card] : [];
+    return getMovableRun(current.tableau[selection.columnIndex], selection.startIndex) ?? [];
+  }, []);
+
+  const selectedCards = useMemo(() => cardsForSelection(state.selected, state), [cardsForSelection, state]);
+
+  const canSelectionMoveToTableau = useCallback(
+    (selection: Selection | null, toColumn: number, current: GameState) => {
+      const cards = cardsForSelection(selection, current);
+      if (!selection || cards.length === 0) return false;
+      if (selection.source === 'tableau' && selection.columnIndex === toColumn) return false;
+      const destination = current.tableau[toColumn].at(-1) ?? null;
+      return cards.length === 1 ? canMoveSingleCardToTableau(cards[0], destination) : canMoveRunToTableau(cards, destination);
+    },
+    [cardsForSelection]
+  );
+
+  const canSelectionMoveToFoundation = useCallback(
+    (selection: Selection | null, suit: Suit, current: GameState) => {
+      const cards = cardsForSelection(selection, current);
+      return cards.length === 1 && cards[0].suit === suit && canMoveCardToFoundation(cards[0], current.foundations, current.foundationTargets);
+    },
+    [cardsForSelection]
+  );
 
   const legalTableauTargets = useMemo(
     () =>
       state.tableau.map((column, toColumn) => {
-        if (!state.selected || selectedCards.length === 0) return false;
-        if (state.selected.source === 'tableau' && state.selected.columnIndex === toColumn) return false;
-        const destination = column.at(-1) ?? null;
-        return selectedCards.length === 1 ? canMoveSingleCardToTableau(selectedCards[0], destination) : canMoveRunToTableau(selectedCards, destination);
+        void column;
+        return canSelectionMoveToTableau(state.selected, toColumn, state);
       }),
-    [selectedCards, state.selected, state.tableau]
+    [canSelectionMoveToTableau, state]
   );
 
   const legalFoundationTargets = useMemo(() => {
     const targets: Partial<Record<Suit, boolean>> = {};
-    if (selectedCards.length === 1) {
-      targets[selectedCards[0].suit] = canMoveCardToFoundation(selectedCards[0], state.foundations, state.foundationTargets);
-    }
+    activeSuits.forEach((suit) => {
+      targets[suit] = canSelectionMoveToFoundation(state.selected, suit, state);
+    });
     return targets;
-  }, [selectedCards, state.foundations, state.foundationTargets]);
+  }, [activeSuits, canSelectionMoveToFoundation, state]);
 
   const commitMove = useCallback(
     (move: Move, message?: string) => {
@@ -238,18 +262,47 @@ export default function App() {
     setState((current) => ({ ...current, selected: { source: 'reserve', reserveIndex }, message: 'Breaking: Reserve Card Situation Developing.' }));
   };
 
-  const moveSelectedToTableau = (toColumn: number) => {
-    const selected = state.selected;
-    if (!selected || !legalTableauTargets[toColumn]) return;
+  const moveSelectedToTableau = (toColumn: number, overrideSelection?: Selection | null) => {
+    const selected = overrideSelection ?? state.selected;
+    if (!selected || !canSelectionMoveToTableau(selected, toColumn, state)) return;
     if (selected.source === 'tableau') commitMove({ type: 'tableauToTableau', fromColumn: selected.columnIndex, startIndex: selected.startIndex, toColumn });
     else commitMove({ type: 'reserveToTableau', reserveIndex: selected.reserveIndex, toColumn });
   };
 
-  const moveSelectedToFoundation = (suit: Suit) => {
-    const selected = state.selected;
-    if (!selected || !legalFoundationTargets[suit]) return;
+  const moveSelectedToFoundation = (suit: Suit, overrideSelection?: Selection | null) => {
+    const selected = overrideSelection ?? state.selected;
+    if (!selected || !canSelectionMoveToFoundation(selected, suit, state)) return;
     if (selected.source === 'tableau') commitMove({ type: 'tableauToFoundation', fromColumn: selected.columnIndex, cardIndex: state.tableau[selected.columnIndex].length - 1 });
     else commitMove({ type: 'reserveToFoundation', reserveIndex: selected.reserveIndex });
+  };
+
+  const startTableauDrag = (columnIndex: number, cardIndex: number, event: DragEvent<HTMLButtonElement>) => {
+    const run = getMovableRun(state.tableau[columnIndex], cardIndex);
+    if (!run) {
+      event.preventDefault();
+      return;
+    }
+    const selection: Selection = { source: 'tableau', columnIndex, startIndex: cardIndex };
+    dragSelectionRef.current = selection;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify(selection));
+    setState((current) => ({ ...current, selected: selection, message: 'Drag the legal knot to a glowing target.' }));
+  };
+
+  const startReserveDrag = (reserveIndex: number, event: DragEvent<HTMLButtonElement>) => {
+    if (!state.reserves[reserveIndex]) {
+      event.preventDefault();
+      return;
+    }
+    const selection: Selection = { source: 'reserve', reserveIndex };
+    dragSelectionRef.current = selection;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify(selection));
+    setState((current) => ({ ...current, selected: selection, message: 'Weather Goose confirms reserve card in flight.' }));
+  };
+
+  const finishDrag = () => {
+    dragSelectionRef.current = null;
   };
 
   const autoFoundationFromTableau = (columnIndex: number, cardIndex: number) => {
@@ -367,6 +420,11 @@ export default function App() {
     const mixedRun = [brain8, goose9];
     const bendingRun: Card[] = [brain8, { ...brain8, id: 'brain-9-test', rank: 9 }, { ...brain8, id: 'brain-8b-test' }, brain7];
     const testState = createGame(1, 'debug', 'storm');
+    const winnableState = createGame(1, 'debug-winnable', 'storm');
+    const firstAccessibleRanks = [
+      ...winnableState.tableau.map((column) => column.at(-1)?.rank),
+      ...winnableState.reserves.map((card) => card?.rank)
+    ].join(',');
     const faceDown: Card = { ...brain8, id: 'down', faceUp: false };
     const exposed = applyMove({ ...snapshotFromState(testState), tableau: [[faceDown, brain8], [brain7], [], [], []] }, { type: 'tableauToTableau', fromColumn: 0, startIndex: 1, toColumn: 2 });
     return [
@@ -375,7 +433,8 @@ export default function App() {
       ['Mixed run blocked', !isValidRun(mixedRun)],
       ['Same-suit direction-changing run moves', isValidRun(bendingRun)],
       ['Foundation requires next rank', !canMoveCardToFoundation(brain7, { brain: [] }, { brain: 13 }) && canMoveCardToFoundation({ ...brain8, rank: 1 }, { brain: [] }, { brain: 13 })],
-      ['Exposed face-down card flips', exposed.tableau[0][0].faceUp]
+      ['Exposed face-down card flips', exposed.tableau[0][0].faceUp],
+      ['New one-suit deal starts in foundation order', firstAccessibleRanks === '1,2,3,4,5,6,7']
     ];
   };
 
@@ -399,11 +458,13 @@ export default function App() {
           <div className="top-piles">
             <Reserve
               cards={state.reserves}
-              selectedIndex={state.selected?.source === 'reserve' ? state.selected.reserveIndex : null}
-              legalTargets={[false, false]}
-              onSelect={selectReserve}
-              onDoubleClick={autoFoundationFromReserve}
-            />
+            selectedIndex={state.selected?.source === 'reserve' ? state.selected.reserveIndex : null}
+            legalTargets={[false, false]}
+            onSelect={selectReserve}
+            onDoubleClick={autoFoundationFromReserve}
+            onDragStart={startReserveDrag}
+            onDragEnd={finishDrag}
+          />
             <section className="foundation-row" aria-label="Foundations">
               {activeSuits.map((suit) => (
                 <Foundation
@@ -414,6 +475,7 @@ export default function App() {
                   active={Boolean(legalFoundationTargets[suit])}
                   onClick={() => moveSelectedToFoundation(suit)}
                   onPointerUp={() => moveSelectedToFoundation(suit)}
+                  onDrop={() => moveSelectedToFoundation(suit, dragSelectionRef.current ?? state.selected)}
                 />
               ))}
             </section>
@@ -432,6 +494,8 @@ export default function App() {
             onSelectCard={selectTableauCard}
             onColumnTarget={moveSelectedToTableau}
             onDoubleClick={autoFoundationFromTableau}
+            onDragStartCard={startTableauDrag}
+            onDragEnd={finishDrag}
           />
         </div>
 
@@ -455,6 +519,7 @@ export default function App() {
             onUndo={undo}
             onAuto={autoMove}
             onRules={() => setShowRules(true)}
+            onTutorial={() => setShowTutorial(true)}
             onMute={() => setMuted((current) => !current)}
             onTheme={(theme) => setState((current) => ({ ...current, theme }))}
             onResetStats={() => {
@@ -493,6 +558,19 @@ export default function App() {
       )}
 
       {showRules && <RulesModal suitMode={state.suitMode} onClose={() => setShowRules(false)} />}
+      {showTutorial && (
+        <TutorialModal
+          firstRun={!tutorialSeen}
+          onClose={() => {
+            setTutorialSeen(true);
+            setShowTutorial(false);
+          }}
+          onDone={() => {
+            setTutorialSeen(true);
+            setShowTutorial(false);
+          }}
+        />
+      )}
     </main>
   );
 }

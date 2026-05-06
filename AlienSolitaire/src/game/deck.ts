@@ -83,16 +83,59 @@ export function shuffleDeck(cards: Card[], seed: string): Card[] {
   return shuffled;
 }
 
+function foundationOrderedDeck(mode: SuitMode, seed: string): Card[] {
+  const random = mulberry32(hashSeed(seed));
+  const targets = foundationTargetsForMode(mode);
+  const progress = Object.fromEntries(activeSuitsForMode(mode).map((suit) => [suit, 0])) as Record<Suit, number>;
+  const cards: Card[] = [];
+
+  while (cards.length < Object.values(targets).reduce((sum, count) => sum + (count ?? 0), 0)) {
+    const available = activeSuitsForMode(mode).filter((suit) => progress[suit] < (targets[suit] ?? 0));
+    const suit = available[Math.floor(random() * available.length)];
+    const nextIndex = progress[suit];
+    const rank = ((nextIndex % 13) + 1) as Rank;
+    const copyIndex = Math.floor(nextIndex / 13);
+    cards.push({
+      id: `${suit}-${rank}-${copyIndex}`,
+      rank,
+      suit,
+      copyIndex,
+      faceUp: false
+    });
+    progress[suit] += 1;
+  }
+
+  return cards;
+}
+
 export function dealGame(mode: SuitMode, seed: string) {
-  const deck = shuffleDeck(createDeck(mode), seed);
+  // Deals are generated in a seeded foundation-legal sequence, then placed into
+  // reveal order. This makes every deal theoretically winnable without needing
+  // an expensive solitaire solver in the browser.
+  const deck = foundationOrderedDeck(mode, seed);
   const tableauCounts = [5, 5, 5, 4, 4];
-  const tableau = tableauCounts.map((count) =>
-    deck.splice(0, count).map((card, index) => ({
-      ...card,
-      faceUp: index === count - 1
-    }))
-  );
+  const topRow = tableauCounts.map(() => deck.shift() as Card);
   const reserves = deck.splice(0, 2).map((card) => ({ ...card, faceUp: true }));
+  const topDownColumns: Card[][] = tableauCounts.map((_count, columnIndex) => [topRow[columnIndex]]);
+  const maxDepth = Math.max(...tableauCounts);
+
+  for (let depth = 1; depth < maxDepth; depth += 1) {
+    for (let columnIndex = 0; columnIndex < tableauCounts.length; columnIndex += 1) {
+      if (depth < tableauCounts[columnIndex]) {
+        topDownColumns[columnIndex].push(deck.shift() as Card);
+      }
+    }
+  }
+
+  const tableau = topDownColumns.map((topDownColumn) =>
+    topDownColumn
+      .slice()
+      .reverse()
+      .map((card, index, column) => ({
+        ...card,
+        faceUp: index === column.length - 1
+      }))
+  );
   const stock = deck.map((card) => ({ ...card, faceUp: false }));
   const foundations = Object.fromEntries(activeSuitsForMode(mode).map((suit) => [suit, []]));
 

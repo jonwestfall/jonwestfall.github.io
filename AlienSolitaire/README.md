@@ -31,6 +31,7 @@ The Vite dev server prints a local URL. For hot-reload development, open `http:/
 - Drawing deals one face-up card to each tableau column from left to right. If fewer than five cards remain, it deals until the stock is empty. The stock does not recycle.
 - The game is lost only when the stock is empty and no legal moves remain.
 - Auto is conservative: it moves available Aces and Twos only, because higher cards can still matter for tableau sequencing.
+- New deals are generated from a seeded, foundation-legal reveal sequence. That means every new game is theoretically winnable by clearing available foundation cards and drawing only after the current visible sequence has cleared.
 
 ## Deck And Foundation Assumptions
 
@@ -47,14 +48,26 @@ Five-suit mode intentionally uses 65 cards so each original suit can have a comp
 ## Controls
 
 - Click or tap a card/run to select it, then click or tap a highlighted tableau/foundation target.
+- Drag a face-up card or valid same-suit run onto a highlighted tableau/foundation target with a mouse or trackpad.
 - Double-click or double-tap a top tableau card or reserve card to move it to foundation when legal.
-- Drag-style touch/mouse play is supported with pointer selection and pointer-up targets.
 - `H`: show hints.
 - `U`: undo.
 - `N`: new game.
 - `A`: conservative auto-foundation.
 
 The game tracks moves, time, undo count, games played, wins, best time, fewest moves, and win streak in `localStorage`. Reloading resumes the current game.
+
+On first launch, Alien Solitaire offers a tutorial. You can reopen it from the Tutorial button. Themes include Stormy Lake Erie, Cleveland Bungalow, Scottish Weather Goose Tour, and Lake Erie Daylight.
+
+## Winnable Deal Model
+
+Random solitaire deals can be impossible without a solver pass. Alien Solitaire avoids that by constructing each seeded deal in foundation-legal reveal order:
+
+1. The deck generator creates a seeded sequence where every card is legal for its foundation when it appears.
+2. The first five cards become tableau tops, the next two become reserves, the remaining tableau cards are placed in the order they will be exposed, and the rest go to stock.
+3. A proof path always exists: play available foundation cards, let exposed face-down cards flip, clear reserves when their rank is next, then draw once the current visible sequence is clear.
+
+The seed still matters, especially in multi-suit modes, because the generator chooses among currently legal suits using the seeded random stream.
 
 ## Debug Rule Tests
 

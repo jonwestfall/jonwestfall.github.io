@@ -1,6 +1,6 @@
 import type { GameSnapshot, GameState, Stats, StatsByMode, SuitMode, ThemeName } from './types';
 
-const GAME_KEY = 'alien-solitaire-current';
+const GAME_KEY = 'alien-solitaire-current-v2';
 const STATS_KEY = 'alien-solitaire-stats';
 const SETTINGS_KEY = 'alien-solitaire-settings';
 
@@ -114,17 +114,18 @@ export function clearSavedGame(): void {
   localStorage.removeItem(GAME_KEY);
 }
 
-export function loadSettings(): { muted: boolean; theme: ThemeName } {
+export function loadSettings(): { muted: boolean; theme: ThemeName; tutorialSeen: boolean } {
   try {
-    return { muted: false, theme: 'storm', ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as object) } as {
+    return { muted: false, theme: 'storm', tutorialSeen: false, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as object) } as {
       muted: boolean;
       theme: ThemeName;
+      tutorialSeen: boolean;
     };
   } catch {
-    return { muted: false, theme: 'storm' };
+    return { muted: false, theme: 'storm', tutorialSeen: false };
   }
 }
 
-export function saveSettings(settings: { muted: boolean; theme: ThemeName }): void {
+export function saveSettings(settings: { muted: boolean; theme: ThemeName; tutorialSeen: boolean }): void {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 }
