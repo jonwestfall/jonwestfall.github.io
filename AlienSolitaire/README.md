@@ -12,7 +12,9 @@ npm run dev
 npm run build
 ```
 
-The Vite dev server prints a local URL, usually `http://localhost:5173/AlienSolitaire/`.
+The Vite dev server prints a local URL. For hot-reload development, open `http://localhost:5173/AlienSolitaire/app.html`.
+
+`AlienSolitaire/index.html` is intentionally the checked-in GitHub Pages build output. It loads compiled files from `AlienSolitaire/assets/`, which is what makes `https://jonwestfall.github.io/AlienSolitaire/index.html` work when this folder is served directly from the user-site repository.
 
 ## Rules
 
@@ -77,11 +79,16 @@ npm install
 npm run build
 ```
 
-Upload or publish the generated `dist` folder to GitHub Pages.
+The build creates `dist/` and then syncs the GitHub Pages-ready files into:
+
+- `index.html`
+- `assets/`
+
+Commit those files when deploying from a GitHub user-site repository that serves the branch root directly.
 
 ### GitHub Actions
 
-This project includes `.github/workflows/deploy.yml`. In a standalone repository:
+This project includes `.github/workflows/deploy.yml`. In a standalone repository where `AlienSolitaire` is the repository root:
 
 1. Push the project to GitHub.
 2. In repository settings, set Pages source to GitHub Actions.

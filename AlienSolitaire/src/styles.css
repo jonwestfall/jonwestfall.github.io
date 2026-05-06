@@ -40,6 +40,7 @@ button {
 .app {
   position: relative;
   min-height: 100vh;
+  width: 100%;
   padding: 22px;
   isolation: isolate;
   overflow: hidden;
@@ -209,6 +210,7 @@ button {
 .board {
   min-width: 0;
   padding: 16px;
+  overflow: hidden;
 }
 
 .top-piles {
@@ -306,6 +308,7 @@ button {
   display: grid;
   grid-template-columns: repeat(5, minmax(104px, 1fr));
   gap: var(--gap);
+  max-width: 100%;
 }
 
 .tableau-column {
@@ -876,11 +879,18 @@ button {
   .side-stack {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(280px, 0.85fr);
+    align-items: start;
   }
 
   .hint-panel,
   .debug-panel {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .side-stack {
+    display: flex;
   }
 }
 
@@ -897,6 +907,7 @@ button {
 
   .topbar {
     align-items: stretch;
+    gap: 12px;
   }
 
   .topbar h1 {
@@ -936,6 +947,7 @@ button {
   .tableau {
     grid-template-columns: repeat(5, minmax(58px, 1fr));
     overflow-x: auto;
+    overscroll-behavior-x: contain;
     padding-bottom: 8px;
   }
 
@@ -945,7 +957,7 @@ button {
   }
 
   .tableau-card-wrap {
-    top: calc(var(--i) * 28px);
+    margin-top: -4px;
   }
 
   .card {
@@ -971,10 +983,6 @@ button {
     font-size: 0.5rem;
   }
 
-  .side-stack {
-    display: flex;
-  }
-
   .stats-strip,
   .lifetime-stats,
   .control-grid {
@@ -994,6 +1002,12 @@ button {
 
   .tableau-card-wrap {
     transform: translateX(-50%) scale(0.96);
+  }
+
+  .control-grid button,
+  .danger-button,
+  .result-panel button {
+    min-height: 46px;
   }
 
   .foundation {
