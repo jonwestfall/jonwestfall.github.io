@@ -14,7 +14,7 @@ export default function TutorialModal({
         <h2 id="tutorial-title">{firstRun ? 'Want the Alien Solitaire tutorial?' : 'Alien Solitaire Tutorial'}</h2>
         {firstRun && <p>The Weather Goose can brief you before the first deal gets any stranger.</p>}
         <ol>
-          <li>Clear cards to foundations from Ace upward. In duplicate-suit modes, each suit foundation repeats A through K for every copy.</li>
+          <li>Clear cards to the receiving piles from Ace upward. Duplicate-suit modes show one physical A-K pile for each copy.</li>
           <li>Tap a card or same-suit run, then tap a glowing tableau or foundation target.</li>
           <li>Drag a face-up card or same-suit run onto a glowing column or foundation when using a mouse or trackpad.</li>
           <li>Single cards can land on ranks one higher or one lower, any suit. Group moves must be same-suit adjacent runs.</li>

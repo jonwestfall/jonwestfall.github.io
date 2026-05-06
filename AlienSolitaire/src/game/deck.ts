@@ -30,6 +30,22 @@ export function copyPlanForMode(mode: SuitMode): Partial<Record<Suit, number>> {
   return { brain: 1, goose: 1, budgie: 1, limo: 1, lake: 1 };
 }
 
+export interface FoundationSlot {
+  id: string;
+  suit: Suit;
+  copyIndex: number;
+}
+
+export function foundationSlotsForMode(mode: SuitMode): FoundationSlot[] {
+  return Object.entries(copyPlanForMode(mode)).flatMap(([suit, copies]) =>
+    Array.from({ length: copies ?? 0 }, (_unused, copyIndex) => ({
+      id: `${suit}-${copyIndex}`,
+      suit: suit as Suit,
+      copyIndex
+    }))
+  );
+}
+
 export function foundationTargetsForMode(mode: SuitMode): FoundationTargets {
   return Object.fromEntries(
     Object.entries(copyPlanForMode(mode)).map(([suit, copies]) => [suit, (copies ?? 0) * 13])

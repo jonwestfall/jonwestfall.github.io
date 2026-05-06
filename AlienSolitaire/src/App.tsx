@@ -7,7 +7,7 @@ import Reserve from './components/Reserve';
 import RulesModal from './components/RulesModal';
 import Tableau from './components/Tableau';
 import TutorialModal from './components/TutorialModal';
-import { activeSuitsForMode, dealGame } from './game/deck';
+import { activeSuitsForMode, dealGame, foundationSlotsForMode } from './game/deck';
 import { getHint, getHintList } from './game/solverHints';
 import {
   applyMove,
@@ -167,6 +167,7 @@ export default function App() {
   }, [beep, state.elapsed, state.moves, state.status, state.suitMode]);
 
   const activeSuits = activeSuitsForMode(state.suitMode);
+  const foundationSlots = useMemo(() => foundationSlotsForMode(state.suitMode), [state.suitMode]);
 
   const cardsForSelection = useCallback((selection: Selection | null, current: GameState): Card[] => {
     if (!selection) return [];
@@ -211,6 +212,11 @@ export default function App() {
     });
     return targets;
   }, [activeSuits, canSelectionMoveToFoundation, state]);
+
+  const isFoundationSlotActive = (suit: Suit, copyIndex: number) => {
+    const pileLength = state.foundations[suit]?.length ?? 0;
+    return Boolean(legalFoundationTargets[suit]) && Math.floor(pileLength / 13) === copyIndex;
+  };
 
   const commitMove = useCallback(
     (move: Move, message?: string) => {
@@ -466,18 +472,24 @@ export default function App() {
             onDragEnd={finishDrag}
           />
             <section className="foundation-row" aria-label="Foundations">
-              {activeSuits.map((suit) => (
+              {foundationSlots.map(({ id, suit, copyIndex }) => {
+                const aggregatePile = state.foundations[suit] ?? [];
+                const slotCards = aggregatePile.slice(copyIndex * 13, copyIndex * 13 + 13);
+                const isActive = isFoundationSlotActive(suit, copyIndex);
+                return (
                 <Foundation
-                  key={suit}
+                  key={id}
                   suit={suit}
-                  cards={state.foundations[suit] ?? []}
-                  target={state.foundationTargets[suit] ?? 13}
-                  active={Boolean(legalFoundationTargets[suit])}
+                  cards={slotCards}
+                  target={13}
+                  copyIndex={copyIndex}
+                  active={isActive}
                   onClick={() => moveSelectedToFoundation(suit)}
                   onPointerUp={() => moveSelectedToFoundation(suit)}
                   onDrop={() => moveSelectedToFoundation(suit, dragSelectionRef.current ?? state.selected)}
                 />
-              ))}
+                );
+              })}
             </section>
             <button className="stock-pile" type="button" onClick={draw}>
               <span className="stock-dome" />

@@ -6,13 +6,14 @@ interface FoundationProps {
   suit: Suit;
   cards: GameCard[];
   target: number;
+  copyIndex?: number;
   active?: boolean;
   onClick?: () => void;
   onPointerUp?: () => void;
   onDrop?: () => void;
 }
 
-export default function Foundation({ suit, cards, target, active, onClick, onPointerUp, onDrop }: FoundationProps) {
+export default function Foundation({ suit, cards, target, copyIndex, active, onClick, onPointerUp, onDrop }: FoundationProps) {
   const suitInfo = SUITS.find((entry) => entry.suit === suit);
   const top = cards.at(-1);
   const nextRank = ((cards.length % 13) + 1) as GameCard['rank'];
@@ -39,7 +40,7 @@ export default function Foundation({ suit, cards, target, active, onClick, onPoi
     >
       {top ? <Card card={top} compact /> : <span className="foundation-empty">{suitInfo?.icon}</span>}
       <span className="pile-caption">
-        {suitInfo?.label} {cards.length}/{target}
+        {suitInfo?.label}{copyIndex !== undefined ? ` ${copyIndex + 1}` : ''} {cards.length}/{target}
       </span>
     </div>
   );

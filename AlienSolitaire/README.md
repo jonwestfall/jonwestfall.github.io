@@ -26,7 +26,7 @@ The Vite dev server prints a local URL. For hot-reload development, open `http:/
 - Empty tableau columns accept any single face-up card or any valid movable run.
 - Only face-up same-suit adjacent runs can move as a group. Direction changes inside a run are legal, so `10, J, 10, 9, 8` is valid if all cards share the same suit.
 - Mixed-suit runs cannot move as a group.
-- Foundations build upward by suit from Ace to King.
+- Foundations build upward by suit from Ace to King. Duplicate-suit modes show one physical receiving pile per suit copy.
 - Reserves can move to tableau or foundation and do not refill in the default variant.
 - Drawing deals one face-up card to each tableau column from left to right. If fewer than five cards remain, it deals until the stock is empty. The stock does not recycle.
 - The game is lost only when the stock is empty and no legal moves remain.
@@ -35,7 +35,7 @@ The Vite dev server prints a local URL. For hot-reload development, open `http:/
 
 ## Deck And Foundation Assumptions
 
-Duplicate-suit modes still need every card to reach a foundation, so foundations accept repeated Ace-through-King cycles for each copy of that suit:
+Duplicate-suit modes still need every card to reach a foundation, so the top row shows one physical Ace-through-King receiving pile for each copy of that suit:
 
 - 1 suit: Brain suit, four copies, 52 cards total.
 - 2 suits: Brain and Goose, two copies each, 52 cards total.

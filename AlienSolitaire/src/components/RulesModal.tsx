@@ -7,7 +7,7 @@ export default function RulesModal({ suitMode, onClose }: { suitMode: SuitMode; 
         <button className="modal-close" type="button" onClick={onClose} aria-label="Close rules">x</button>
         <h2 id="rules-title">Alien Solitaire Rules</h2>
         <p>
-          Build every active suit foundation upward from Ace to King. Duplicate-suit modes use repeated Ace-through-King foundation cycles so every card can clear.
+          Build every receiving pile upward from Ace to King. Duplicate-suit modes show one physical A-K pile for each copy of that suit.
         </p>
         <p>
           New deals are generated in a seeded, foundation-legal reveal order so every game is theoretically winnable.
