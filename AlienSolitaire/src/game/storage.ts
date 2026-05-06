@@ -1,6 +1,6 @@
 import type { GameSnapshot, GameState, Stats, StatsByMode, SuitMode, ThemeName } from './types';
 
-const GAME_KEY = 'alien-solitaire-current-v2';
+const GAME_KEY = 'alien-solitaire-current-v3';
 const STATS_KEY = 'alien-solitaire-stats';
 const SETTINGS_KEY = 'alien-solitaire-settings';
 

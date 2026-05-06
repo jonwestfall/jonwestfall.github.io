@@ -12,6 +12,7 @@ import { getHint, getHintList } from './game/solverHints';
 import {
   applyMove,
   canMoveCardToFoundation,
+  canMoveCardToFoundationSlot,
   canMoveRunToTableau,
   canMoveSingleCardToTableau,
   checkStuck,
@@ -189,9 +190,9 @@ export default function App() {
   );
 
   const canSelectionMoveToFoundation = useCallback(
-    (selection: Selection | null, suit: Suit, current: GameState) => {
+    (selection: Selection | null, foundationId: string, suit: Suit, current: GameState) => {
       const cards = cardsForSelection(selection, current);
-      return cards.length === 1 && cards[0].suit === suit && canMoveCardToFoundation(cards[0], current.foundations, current.foundationTargets);
+      return cards.length === 1 && canMoveCardToFoundationSlot(cards[0], current.foundations, foundationId, suit);
     },
     [cardsForSelection]
   );
@@ -206,17 +207,12 @@ export default function App() {
   );
 
   const legalFoundationTargets = useMemo(() => {
-    const targets: Partial<Record<Suit, boolean>> = {};
-    activeSuits.forEach((suit) => {
-      targets[suit] = canSelectionMoveToFoundation(state.selected, suit, state);
+    const targets: Record<string, boolean> = {};
+    foundationSlots.forEach((slot) => {
+      targets[slot.id] = canSelectionMoveToFoundation(state.selected, slot.id, slot.suit, state);
     });
     return targets;
-  }, [activeSuits, canSelectionMoveToFoundation, state]);
-
-  const isFoundationSlotActive = (suit: Suit, copyIndex: number) => {
-    const pileLength = state.foundations[suit]?.length ?? 0;
-    return Boolean(legalFoundationTargets[suit]) && Math.floor(pileLength / 13) === copyIndex;
-  };
+  }, [canSelectionMoveToFoundation, foundationSlots, state]);
 
   const commitMove = useCallback(
     (move: Move, message?: string) => {
@@ -275,11 +271,14 @@ export default function App() {
     else commitMove({ type: 'reserveToTableau', reserveIndex: selected.reserveIndex, toColumn });
   };
 
-  const moveSelectedToFoundation = (suit: Suit, overrideSelection?: Selection | null) => {
+  const moveSelectedToFoundation = (foundationId: string, suit: Suit, overrideSelection?: Selection | null) => {
     const selected = overrideSelection ?? state.selected;
-    if (!selected || !canSelectionMoveToFoundation(selected, suit, state)) return;
-    if (selected.source === 'tableau') commitMove({ type: 'tableauToFoundation', fromColumn: selected.columnIndex, cardIndex: state.tableau[selected.columnIndex].length - 1 });
-    else commitMove({ type: 'reserveToFoundation', reserveIndex: selected.reserveIndex });
+    if (!selected || !canSelectionMoveToFoundation(selected, foundationId, suit, state)) return;
+    if (selected.source === 'tableau') {
+      commitMove({ type: 'tableauToFoundation', fromColumn: selected.columnIndex, cardIndex: state.tableau[selected.columnIndex].length - 1, foundationId });
+    } else {
+      commitMove({ type: 'reserveToFoundation', reserveIndex: selected.reserveIndex, foundationId });
+    }
   };
 
   const startTableauDrag = (columnIndex: number, cardIndex: number, event: DragEvent<HTMLButtonElement>) => {
@@ -313,15 +312,17 @@ export default function App() {
 
   const autoFoundationFromTableau = (columnIndex: number, cardIndex: number) => {
     const card = state.tableau[columnIndex][cardIndex];
-    if (cardIndex === state.tableau[columnIndex].length - 1 && canMoveCardToFoundation(card, state.foundations, state.foundationTargets)) {
-      commitMove({ type: 'tableauToFoundation', fromColumn: columnIndex, cardIndex });
+    const foundationSlot = foundationSlots.find((slot) => canMoveCardToFoundationSlot(card, state.foundations, slot.id, slot.suit));
+    if (cardIndex === state.tableau[columnIndex].length - 1 && foundationSlot) {
+      commitMove({ type: 'tableauToFoundation', fromColumn: columnIndex, cardIndex, foundationId: foundationSlot.id });
     }
   };
 
   const autoFoundationFromReserve = (reserveIndex: number) => {
     const card = state.reserves[reserveIndex];
-    if (card && canMoveCardToFoundation(card, state.foundations, state.foundationTargets)) {
-      commitMove({ type: 'reserveToFoundation', reserveIndex });
+    const foundationSlot = card ? foundationSlots.find((slot) => canMoveCardToFoundationSlot(card, state.foundations, slot.id, slot.suit)) : null;
+    if (card && foundationSlot) {
+      commitMove({ type: 'reserveToFoundation', reserveIndex, foundationId: foundationSlot.id });
     }
   };
 
@@ -433,6 +434,9 @@ export default function App() {
     ].join(',');
     const faceDown: Card = { ...brain8, id: 'down', faceUp: false };
     const exposed = applyMove({ ...snapshotFromState(testState), tableau: [[faceDown, brain8], [brain7], [], [], []] }, { type: 'tableauToTableau', fromColumn: 0, startIndex: 1, toColumn: 2 });
+    const aceOne: Card = { ...brain8, id: 'brain-ace-1', rank: 1 };
+    const aceTwo: Card = { ...brain8, id: 'brain-ace-2', rank: 1 };
+    const duplicateAceFoundations = { 'brain-0': [aceOne], 'brain-1': [], 'brain-2': [], 'brain-3': [] };
     return [
       ['Single 8 moves to 7', canMoveSingleCardToTableau(brain8, brain7)],
       ['Single 8 moves to 9', canMoveSingleCardToTableau(brain8, goose9)],
@@ -440,7 +444,8 @@ export default function App() {
       ['Same-suit direction-changing run moves', isValidRun(bendingRun)],
       ['Foundation requires next rank', !canMoveCardToFoundation(brain7, { brain: [] }, { brain: 13 }) && canMoveCardToFoundation({ ...brain8, rank: 1 }, { brain: [] }, { brain: 13 })],
       ['Exposed face-down card flips', exposed.tableau[0][0].faceUp],
-      ['New one-suit deal starts in foundation order', firstAccessibleRanks === '1,2,3,4,5,6,7']
+      ['New one-suit deal starts in foundation order', firstAccessibleRanks === '1,2,3,4,5,6,7'],
+      ['Second duplicate Ace can move to another receiving pile', canMoveCardToFoundationSlot(aceTwo, duplicateAceFoundations, 'brain-1', 'brain')]
     ];
   };
 
@@ -473,9 +478,8 @@ export default function App() {
           />
             <section className="foundation-row" aria-label="Foundations">
               {foundationSlots.map(({ id, suit, copyIndex }) => {
-                const aggregatePile = state.foundations[suit] ?? [];
-                const slotCards = aggregatePile.slice(copyIndex * 13, copyIndex * 13 + 13);
-                const isActive = isFoundationSlotActive(suit, copyIndex);
+                const slotCards = state.foundations[id] ?? [];
+                const isActive = Boolean(legalFoundationTargets[id]);
                 return (
                 <Foundation
                   key={id}
@@ -484,9 +488,9 @@ export default function App() {
                   target={13}
                   copyIndex={copyIndex}
                   active={isActive}
-                  onClick={() => moveSelectedToFoundation(suit)}
-                  onPointerUp={() => moveSelectedToFoundation(suit)}
-                  onDrop={() => moveSelectedToFoundation(suit, dragSelectionRef.current ?? state.selected)}
+                  onClick={() => moveSelectedToFoundation(id, suit)}
+                  onPointerUp={() => moveSelectedToFoundation(id, suit)}
+                  onDrop={() => moveSelectedToFoundation(id, suit, dragSelectionRef.current ?? state.selected)}
                 />
                 );
               })}

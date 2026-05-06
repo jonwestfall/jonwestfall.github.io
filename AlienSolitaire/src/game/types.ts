@@ -19,7 +19,13 @@ export interface SuitInfo {
   color: string;
 }
 
-export type Foundations = Partial<Record<Suit, Card[]>>;
+export interface FoundationSlot {
+  id: string;
+  suit: Suit;
+  copyIndex: number;
+}
+
+export type Foundations = Record<string, Card[]>;
 export type FoundationTargets = Partial<Record<Suit, number>>;
 
 export interface TableauSelection {
@@ -60,8 +66,8 @@ export interface GameState extends GameSnapshot {
 export type Move =
   | { type: 'tableauToTableau'; fromColumn: number; startIndex: number; toColumn: number }
   | { type: 'reserveToTableau'; reserveIndex: number; toColumn: number }
-  | { type: 'tableauToFoundation'; fromColumn: number; cardIndex: number }
-  | { type: 'reserveToFoundation'; reserveIndex: number };
+  | { type: 'tableauToFoundation'; fromColumn: number; cardIndex: number; foundationId: string }
+  | { type: 'reserveToFoundation'; reserveIndex: number; foundationId: string };
 
 export interface StatsByMode {
   gamesPlayed: number;

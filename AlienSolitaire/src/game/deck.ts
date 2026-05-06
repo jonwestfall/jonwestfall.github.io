@@ -1,4 +1,4 @@
-import type { Card, FoundationTargets, Rank, Suit, SuitInfo, SuitMode } from './types';
+import type { Card, FoundationSlot, FoundationTargets, Rank, Suit, SuitInfo, SuitMode } from './types';
 
 export const SUITS: SuitInfo[] = [
   { suit: 'brain', label: 'Brain', icon: 'B', color: '#ff633d' },
@@ -28,12 +28,6 @@ export function copyPlanForMode(mode: SuitMode): Partial<Record<Suit, number>> {
   if (mode === 3) return { brain: 2, goose: 1, budgie: 1 };
   if (mode === 4) return { brain: 1, goose: 1, budgie: 1, limo: 1 };
   return { brain: 1, goose: 1, budgie: 1, limo: 1, lake: 1 };
-}
-
-export interface FoundationSlot {
-  id: string;
-  suit: Suit;
-  copyIndex: number;
 }
 
 export function foundationSlotsForMode(mode: SuitMode): FoundationSlot[] {
@@ -153,7 +147,7 @@ export function dealGame(mode: SuitMode, seed: string) {
       }))
   );
   const stock = deck.map((card) => ({ ...card, faceUp: false }));
-  const foundations = Object.fromEntries(activeSuitsForMode(mode).map((suit) => [suit, []]));
+  const foundations = Object.fromEntries(foundationSlotsForMode(mode).map((slot) => [slot.id, []]));
 
   return {
     tableau,

@@ -1,3 +1,4 @@
+import { foundationSlotsForMode } from './deck';
 import type { Card, Foundations, GameSnapshot, GameState, Move, Rank, Suit } from './types';
 
 function cloneCard(card: Card): Card {
@@ -10,7 +11,7 @@ export function cloneSnapshot(state: GameSnapshot): GameSnapshot {
     reserves: state.reserves.map((card) => (card ? cloneCard(card) : null)),
     stock: state.stock.map(cloneCard),
     foundations: Object.fromEntries(
-      Object.entries(state.foundations).map(([suit, cards]) => [suit, (cards ?? []).map(cloneCard)])
+      Object.entries(state.foundations).map(([foundationId, cards]) => [foundationId, (cards ?? []).map(cloneCard)])
     ) as Foundations,
     foundationTargets: { ...state.foundationTargets },
     moves: state.moves,
@@ -56,21 +57,28 @@ export function canMoveRunToTableau(run: Card[], destinationCardOrEmpty: Card | 
   return destinationCardOrEmpty === null || (destinationCardOrEmpty.faceUp && areRanksAdjacent(run[0].rank, destinationCardOrEmpty.rank));
 }
 
-export function nextFoundationRank(card: Card, foundations: Foundations): Rank {
-  const length = foundations[card.suit]?.length ?? 0;
+export function nextFoundationRankForPile(pile: Card[]): Rank {
+  const length = pile.length;
   return ((length % 13) + 1) as Rank;
 }
 
-export function canMoveCardToFoundation(card: Card, foundations: Foundations, foundationTargets: Partial<Record<Suit, number>> = {}): boolean {
+export function canMoveCardToFoundationSlot(card: Card, foundations: Foundations, foundationId: string, suit: Suit): boolean {
   if (!card.faceUp) return false;
-  const pile = foundations[card.suit];
-  const targetCount = foundationTargets[card.suit];
-  if (!pile || targetCount === undefined || pile.length >= targetCount) return false;
-  return card.rank === nextFoundationRank(card, foundations);
+  const pile = foundations[foundationId];
+  if (!pile || pile.length >= 13 || card.suit !== suit) return false;
+  return card.rank === nextFoundationRankForPile(pile);
+}
+
+export function canMoveCardToFoundation(card: Card, foundations: Foundations, _foundationTargets: Partial<Record<Suit, number>> = {}): boolean {
+  return Object.entries(foundations).some(([foundationId, pile]) => {
+    const suit = foundationId.split('-')[0] as Suit;
+    return pile.length < 13 && canMoveCardToFoundationSlot(card, foundations, foundationId, suit);
+  });
 }
 
 export function getLegalMoves(state: GameSnapshot): Move[] {
   const moves: Move[] = [];
+  const foundationSlots = foundationSlotsForMode(state.suitMode);
 
   state.tableau.forEach((column, fromColumn) => {
     column.forEach((_card, startIndex) => {
@@ -88,8 +96,12 @@ export function getLegalMoves(state: GameSnapshot): Move[] {
 
     const topIndex = column.length - 1;
     const topCard = column[topIndex];
-    if (topCard && canMoveCardToFoundation(topCard, state.foundations, state.foundationTargets)) {
-      moves.push({ type: 'tableauToFoundation', fromColumn, cardIndex: topIndex });
+    if (topCard) {
+      foundationSlots.forEach((slot) => {
+        if (canMoveCardToFoundationSlot(topCard, state.foundations, slot.id, slot.suit)) {
+          moves.push({ type: 'tableauToFoundation', fromColumn, cardIndex: topIndex, foundationId: slot.id });
+        }
+      });
     }
   });
 
@@ -100,9 +112,11 @@ export function getLegalMoves(state: GameSnapshot): Move[] {
         moves.push({ type: 'reserveToTableau', reserveIndex, toColumn });
       }
     });
-    if (canMoveCardToFoundation(card, state.foundations, state.foundationTargets)) {
-      moves.push({ type: 'reserveToFoundation', reserveIndex });
-    }
+    foundationSlots.forEach((slot) => {
+      if (canMoveCardToFoundationSlot(card, state.foundations, slot.id, slot.suit)) {
+        moves.push({ type: 'reserveToFoundation', reserveIndex, foundationId: slot.id });
+      }
+    });
   });
 
   return moves;
@@ -144,16 +158,18 @@ export function applyMove(state: GameSnapshot, move: Move): GameSnapshot {
   if (move.type === 'tableauToFoundation') {
     const column = next.tableau[move.fromColumn];
     const card = column[move.cardIndex];
-    if (move.cardIndex !== column.length - 1 || !card || !canMoveCardToFoundation(card, next.foundations, next.foundationTargets)) return state;
+    const suit = move.foundationId.split('-')[0] as Suit;
+    if (move.cardIndex !== column.length - 1 || !card || !canMoveCardToFoundationSlot(card, next.foundations, move.foundationId, suit)) return state;
     next.tableau[move.fromColumn] = column.slice(0, -1);
-    next.foundations[card.suit] = [...(next.foundations[card.suit] ?? []), cloneCard(card)];
+    next.foundations[move.foundationId] = [...(next.foundations[move.foundationId] ?? []), cloneCard(card)];
   }
 
   if (move.type === 'reserveToFoundation') {
     const card = next.reserves[move.reserveIndex];
-    if (!card || !canMoveCardToFoundation(card, next.foundations, next.foundationTargets)) return state;
+    const suit = move.foundationId.split('-')[0] as Suit;
+    if (!card || !canMoveCardToFoundationSlot(card, next.foundations, move.foundationId, suit)) return state;
     next.reserves[move.reserveIndex] = null;
-    next.foundations[card.suit] = [...(next.foundations[card.suit] ?? []), cloneCard(card)];
+    next.foundations[move.foundationId] = [...(next.foundations[move.foundationId] ?? []), cloneCard(card)];
   }
 
   next.moves += 1;
