@@ -10,7 +10,7 @@ export default function RulesModal({ suitMode, onClose }: { suitMode: SuitMode; 
           Build every receiving pile upward from Ace to King. Duplicate-suit modes show one physical A-K pile for each copy of that suit.
         </p>
         <p>
-          New deals are generated in a seeded, foundation-legal reveal order so every game is theoretically winnable.
+          New deals start as seeded random shuffles. The app only accepts a deal after its solver finds at least one legal completion path.
         </p>
         <ul>
           <li>Five tableau columns, two face-up reserves, and a stock that never recycles.</li>
@@ -20,6 +20,7 @@ export default function RulesModal({ suitMode, onClose }: { suitMode: SuitMode; 
           <li>Draw deals one card to each column, left to right, stopping when the stock is empty.</li>
           <li>Reserves do not refill in this default variant.</li>
           <li>Auto is intentionally conservative: it moves currently available Aces and Twos only.</li>
+          <li>Solvable does not mean easy: the proof path may require guesses, restarts, and Undo.</li>
           <li>Keyboard: H hint, U undo, N new game, A auto.</li>
         </ul>
         <p>

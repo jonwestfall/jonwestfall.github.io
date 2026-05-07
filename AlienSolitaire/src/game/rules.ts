@@ -1,4 +1,3 @@
-import { foundationSlotsForMode } from './deck';
 import type { Card, Foundations, GameSnapshot, GameState, Move, Rank, Suit } from './types';
 
 function cloneCard(card: Card): Card {
@@ -78,7 +77,10 @@ export function canMoveCardToFoundation(card: Card, foundations: Foundations, _f
 
 export function getLegalMoves(state: GameSnapshot): Move[] {
   const moves: Move[] = [];
-  const foundationSlots = foundationSlotsForMode(state.suitMode);
+  const foundationSlots = Object.keys(state.foundations).map((id) => ({
+    id,
+    suit: id.split('-')[0] as Suit
+  }));
 
   state.tableau.forEach((column, fromColumn) => {
     column.forEach((_card, startIndex) => {

@@ -1,4 +1,5 @@
-import type { Card, FoundationSlot, FoundationTargets, Rank, Suit, SuitInfo, SuitMode } from './types';
+import { findWinningPath } from './solvability';
+import type { Card, FoundationSlot, FoundationTargets, GameSnapshot, Rank, Suit, SuitInfo, SuitMode, ThemeName } from './types';
 
 export const SUITS: SuitInfo[] = [
   { suit: 'brain', label: 'Brain', icon: 'B', color: '#ff633d' },
@@ -117,22 +118,39 @@ function foundationOrderedDeck(mode: SuitMode, seed: string): Card[] {
   return cards;
 }
 
-export function dealGame(mode: SuitMode, seed: string) {
-  // Deals are generated in a seeded foundation-legal sequence, then placed into
-  // reveal order. This makes every deal theoretically winnable without needing
-  // an expensive solitaire solver in the browser.
-  const deck = foundationOrderedDeck(mode, seed);
+function dealFromDeck(deck: Card[], mode: SuitMode) {
   const tableauCounts = [5, 5, 5, 4, 4];
-  const topRow = tableauCounts.map(() => deck.shift() as Card);
-  const reserves = deck.splice(0, 2).map((card) => ({ ...card, faceUp: true }));
+  const workingDeck = deck.map((card) => ({ ...card, faceUp: false }));
+  const tableau = tableauCounts.map((count) =>
+    workingDeck.splice(0, count).map((card, index) => ({
+      ...card,
+      faceUp: index === count - 1
+    }))
+  );
+  const reserves = workingDeck.splice(0, 2).map((card) => ({ ...card, faceUp: true }));
+  const stock = workingDeck.map((card) => ({ ...card, faceUp: false }));
+  const foundations = Object.fromEntries(foundationSlotsForMode(mode).map((slot) => [slot.id, []]));
+
+  return {
+    tableau,
+    reserves,
+    stock,
+    foundations,
+    foundationTargets: foundationTargetsForMode(mode)
+  };
+}
+
+function dealFromRevealOrderedDeck(deck: Card[], mode: SuitMode) {
+  const workingDeck = deck.map((card) => ({ ...card, faceUp: false }));
+  const tableauCounts = [5, 5, 5, 4, 4];
+  const topRow = tableauCounts.map(() => workingDeck.shift() as Card);
+  const reserves = workingDeck.splice(0, 2).map((card) => ({ ...card, faceUp: true }));
   const topDownColumns: Card[][] = tableauCounts.map((_count, columnIndex) => [topRow[columnIndex]]);
   const maxDepth = Math.max(...tableauCounts);
 
   for (let depth = 1; depth < maxDepth; depth += 1) {
     for (let columnIndex = 0; columnIndex < tableauCounts.length; columnIndex += 1) {
-      if (depth < tableauCounts[columnIndex]) {
-        topDownColumns[columnIndex].push(deck.shift() as Card);
-      }
+      if (depth < tableauCounts[columnIndex]) topDownColumns[columnIndex].push(workingDeck.shift() as Card);
     }
   }
 
@@ -145,7 +163,7 @@ export function dealGame(mode: SuitMode, seed: string) {
         faceUp: index === column.length - 1
       }))
   );
-  const stock = deck.map((card) => ({ ...card, faceUp: false }));
+  const stock = workingDeck.map((card) => ({ ...card, faceUp: false }));
   const foundations = Object.fromEntries(foundationSlotsForMode(mode).map((slot) => [slot.id, []]));
 
   return {
@@ -155,4 +173,50 @@ export function dealGame(mode: SuitMode, seed: string) {
     foundations,
     foundationTargets: foundationTargetsForMode(mode)
   };
+}
+
+function solverSnapshot(
+  deal: ReturnType<typeof dealFromDeck>,
+  mode: SuitMode,
+  seed: string,
+  theme: ThemeName = 'storm'
+): GameSnapshot {
+  return {
+    ...deal,
+    moves: 0,
+    undoCount: 0,
+    seed,
+    suitMode: mode,
+    status: 'playing',
+    theme,
+    message: ''
+  };
+}
+
+function solverBudgetForMode(mode: SuitMode): { candidates: number; maxVisited: number; maxDepth: number } {
+  if (mode === 5) return { candidates: 110, maxVisited: 18000, maxDepth: 340 };
+  if (mode === 4) return { candidates: 90, maxVisited: 15000, maxDepth: 300 };
+  if (mode === 3) return { candidates: 70, maxVisited: 13000, maxDepth: 280 };
+  return { candidates: 56, maxVisited: 11000, maxDepth: 260 };
+}
+
+export function dealGame(mode: SuitMode, seed: string) {
+  const budget = solverBudgetForMode(mode);
+
+  for (let attempt = 0; attempt < budget.candidates; attempt += 1) {
+    const candidateSeed = `${seed}:solvable-candidate:${attempt}`;
+    const candidate = dealFromDeck(shuffleDeck(createDeck(mode), candidateSeed), mode);
+    const path = findWinningPath(solverSnapshot(candidate, mode, seed), {
+      maxVisited: budget.maxVisited,
+      maxDepth: budget.maxDepth
+    });
+    if (path) return candidate;
+  }
+
+  // Extremely unlucky seeds can exceed the browser solver budget. The fallback
+  // is still seeded and solver-certifiable, but it is less chaotic than the
+  // random candidates above.
+  const fallback = dealFromRevealOrderedDeck(foundationOrderedDeck(mode, `${seed}:certified-fallback`), mode);
+  findWinningPath(solverSnapshot(fallback, mode, seed), { maxVisited: 4000, maxDepth: budget.maxDepth });
+  return fallback;
 }

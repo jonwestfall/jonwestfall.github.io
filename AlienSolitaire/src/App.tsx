@@ -9,6 +9,7 @@ import Tableau from './components/Tableau';
 import TutorialModal from './components/TutorialModal';
 import { activeSuitsForMode, dealGame, foundationSlotsForMode } from './game/deck';
 import { getHint, getHintList } from './game/solverHints';
+import { findWinningPath } from './game/solvability';
 import {
   applyMove,
   canMoveCardToFoundation,
@@ -60,7 +61,7 @@ function createGame(mode: SuitMode, seed: string, theme: ThemeName): GameState {
     startedAt: Date.now(),
     elapsed: 0,
     theme,
-    message: 'Lake Erie Advisory: this deal is Weather Goose certified winnable.'
+    message: 'Lake Erie Advisory: solver-certified chaos is now in progress.'
   };
 }
 
@@ -428,10 +429,7 @@ export default function App() {
     const bendingRun: Card[] = [brain8, { ...brain8, id: 'brain-9-test', rank: 9 }, { ...brain8, id: 'brain-8b-test' }, brain7];
     const testState = createGame(1, 'debug', 'storm');
     const winnableState = createGame(1, 'debug-winnable', 'storm');
-    const firstAccessibleRanks = [
-      ...winnableState.tableau.map((column) => column.at(-1)?.rank),
-      ...winnableState.reserves.map((card) => card?.rank)
-    ].join(',');
+    const solverCertified = findWinningPath(snapshotFromState(winnableState), { maxVisited: 20000, maxDepth: 260 }) !== null;
     const faceDown: Card = { ...brain8, id: 'down', faceUp: false };
     const exposed = applyMove({ ...snapshotFromState(testState), tableau: [[faceDown, brain8], [brain7], [], [], []] }, { type: 'tableauToTableau', fromColumn: 0, startIndex: 1, toColumn: 2 });
     const aceOne: Card = { ...brain8, id: 'brain-ace-1', rank: 1 };
@@ -444,7 +442,7 @@ export default function App() {
       ['Same-suit direction-changing run moves', isValidRun(bendingRun)],
       ['Foundation requires next rank', !canMoveCardToFoundation(brain7, { brain: [] }, { brain: 13 }) && canMoveCardToFoundation({ ...brain8, rank: 1 }, { brain: [] }, { brain: 13 })],
       ['Exposed face-down card flips', exposed.tableau[0][0].faceUp],
-      ['New one-suit deal starts in foundation order', firstAccessibleRanks === '1,2,3,4,5,6,7'],
+      ['New one-suit deal has a legal solver path', solverCertified],
       ['Second duplicate Ace can move to another receiving pile', canMoveCardToFoundationSlot(aceTwo, duplicateAceFoundations, 'brain-1', 'brain')]
     ];
   };

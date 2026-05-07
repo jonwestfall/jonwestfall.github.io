@@ -31,7 +31,7 @@ The Vite dev server prints a local URL. For hot-reload development, open `http:/
 - Drawing deals one face-up card to each tableau column from left to right. If fewer than five cards remain, it deals until the stock is empty. The stock does not recycle.
 - The game is lost only when the stock is empty and no legal moves remain.
 - Auto is conservative: it moves available Aces and Twos only, because higher cards can still matter for tableau sequencing.
-- New deals are generated from a seeded, foundation-legal reveal sequence. That means every new game is theoretically winnable by clearing available foundation cards and drawing only after the current visible sequence has cleared.
+- New deals begin as seeded random shuffles. The app accepts a deal only after its solver finds a legal completion path, so solvable does not mean easy or obvious.
 
 ## Deck And Foundation Assumptions
 
@@ -61,13 +61,15 @@ On first launch, Alien Solitaire offers a tutorial. You can reopen it from the T
 
 ## Winnable Deal Model
 
-Random solitaire deals can be impossible without a solver pass. Alien Solitaire avoids that by constructing each seeded deal in foundation-legal reveal order:
+Random solitaire deals can be impossible without a solver pass. Alien Solitaire now uses a shuffle-first, solve-second model:
 
-1. The deck generator creates a seeded sequence where every card is legal for its foundation when it appears.
-2. The first five cards become tableau tops, the next two become reserves, the remaining tableau cards are placed in the order they will be exposed, and the rest go to stock.
-3. A proof path always exists: play available foundation cards, let exposed face-down cards flip, clear reserves when their rank is next, then draw once the current visible sequence is clear.
+1. The deck generator creates a normal seeded random shuffle candidate.
+2. The candidate is dealt into the five tableau columns, two reserves, and stock.
+3. A bounded in-browser solver tries legal tableau, reserve, foundation, and stock-draw moves using the same rule engine as the player.
+4. The first candidate with a legal completion path is accepted for that seed and suit mode.
+5. If a very unlucky seed exhausts the browser solver budget, the generator uses a deterministic certified fallback deal so the “always solvable” promise is preserved.
 
-The seed still matters, especially in multi-suit modes, because the generator chooses among currently legal suits using the seeded random stream.
+The seed still matters: replaying the same seed and suit mode regenerates the same accepted shuffle. “Solvable” means the game is technically completable through legal moves. It may still require guesses, restarts of the same seed, and Undo because the human player does not see the solver’s path.
 
 ## Debug Rule Tests
 
