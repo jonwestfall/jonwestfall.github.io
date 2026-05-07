@@ -1,0 +1,179 @@
+{
+  "version": 1,
+  "rounds": [
+    {
+      "round": 1,
+      "sections": [
+        {
+          "id": "round-1-bicep-curls",
+          "type": "reps",
+          "name": "Bicep Curls",
+          "repsSource": "biceps",
+          "timingSource": "biceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-1-tricep-extensions",
+          "type": "triceps_two_arm",
+          "name": "Tricep Extensions",
+          "repsSource": "triceps",
+          "timingSource": "triceps",
+          "armSwitchRestSource": "triceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-1-squats-exercise-band",
+          "type": "manual_reps",
+          "name": "Squats: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-1-hip-hinges-exercise-band",
+          "type": "manual_reps",
+          "name": "Hip Hinges: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard",
+          "requiresSetting": "includeHipHinges"
+        },
+        {
+          "id": "round-1-shoulder-shrugs-dumbbell",
+          "type": "manual_reps",
+          "name": "Shoulder Shrugs: Dumbbell",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-1-upright-band-rows",
+          "type": "manual_reps",
+          "name": "Upright Band Rows",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-1-crunches",
+          "type": "manual_reps",
+          "name": "Crunches",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "sections": [
+        {
+          "id": "round-2-bicep-curls",
+          "type": "reps",
+          "name": "Bicep Curls",
+          "repsSource": "biceps",
+          "timingSource": "biceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-2-tricep-extensions",
+          "type": "triceps_two_arm",
+          "name": "Tricep Extensions",
+          "repsSource": "triceps",
+          "timingSource": "triceps",
+          "armSwitchRestSource": "triceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-2-squats-exercise-band",
+          "type": "manual_reps",
+          "name": "Squats: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-2-hip-hinges-exercise-band",
+          "type": "manual_reps",
+          "name": "Hip Hinges: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard",
+          "requiresSetting": "includeHipHinges"
+        },
+        {
+          "id": "round-2-shoulder-shrugs-dumbbell",
+          "type": "manual_reps",
+          "name": "Shoulder Shrugs: Dumbbell",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-2-upright-band-rows",
+          "type": "manual_reps",
+          "name": "Upright Band Rows",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-2-side-plank",
+          "type": "manual_hold",
+          "name": "Side Plank",
+          "durationSource": "sidePlank",
+          "afterRestSource": "standard"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "sections": [
+        {
+          "id": "round-3-bicep-curls",
+          "type": "reps",
+          "name": "Bicep Curls",
+          "repsSource": "biceps",
+          "timingSource": "biceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-3-tricep-extensions",
+          "type": "triceps_two_arm",
+          "name": "Tricep Extensions",
+          "repsSource": "triceps",
+          "timingSource": "triceps",
+          "armSwitchRestSource": "triceps",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-3-squats-exercise-band",
+          "type": "manual_reps",
+          "name": "Squats: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-3-hip-hinges-exercise-band",
+          "type": "manual_reps",
+          "name": "Hip Hinges: Exercise Band",
+          "repsSource": "standard",
+          "afterRestSource": "standard",
+          "requiresSetting": "includeHipHinges"
+        },
+        {
+          "id": "round-3-shoulder-shrugs-dumbbell",
+          "type": "manual_reps",
+          "name": "Shoulder Shrugs: Dumbbell",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-3-upright-band-rows",
+          "type": "manual_reps",
+          "name": "Upright Band Rows",
+          "repsSource": "standard",
+          "afterRestSource": "standard"
+        },
+        {
+          "id": "round-3-crunches",
+          "type": "manual_reps",
+          "name": "Crunches",
+          "repsSource": "standard",
+          "afterRestSeconds": 0
+        }
+      ]
+    }
+  ]
+}

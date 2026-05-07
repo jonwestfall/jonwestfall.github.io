@@ -7,7 +7,8 @@ This document explains the standalone `strength-timer.html` page so it can be mo
 - `strength-timer.html` contains the entire app:
   - `<style>`: visual layout, timer cards, workout list, import/export controls, report table, responsive rules.
   - `<body>`: the timer display, exercise tabs, sliders/config controls, JSON tools, workout report, and guidance text.
-  - `<script>`: presets, state, localStorage persistence, timer state machines, Full Workout sequencing, import/export, report logging, tones, and event listeners.
+  - `<script>`: presets, state, localStorage persistence, timer state machines, Full Workout JSON loading/sequencing, import/export, report logging, tones, and event listeners.
+- `strength-timer-default-workout.json` contains the default Full Workout recipe. GitHub Pages serves this as a static local file, and `strength-timer.html` loads it with `fetch()` during startup.
 - The page has three exercise tabs:
   - `Bicep Curls`
   - `Tricep Extensions`
@@ -76,11 +77,41 @@ Traffic light semantics matter:
 - Red: `Time Under Tension`
 - Green: `Reset`, rests, and ready states
 
+## Default Workout JSON
+
+The default workout is intentionally outside the HTML source in:
+
+```text
+strength-timer-default-workout.json
+```
+
+The JSON file is declarative. It does not store current user slider values. Instead, sections use source fields that the page resolves at runtime:
+
+- `repsSource: "biceps"`: use the Bicep Curls tab's current starting reps.
+- `repsSource: "triceps"`: use the Tricep Extensions tab's current starting reps.
+- `repsSource: "standard"`: use the Full Workout tab's standard reps control.
+- `afterRestSource: "standard"`: use the Full Workout tab's standard rest control.
+- `armSwitchRestSource: "triceps"`: use the Full Workout tab's tricep arm-switch rest control.
+- `durationSource: "sidePlank"`: use the Full Workout tab's side plank duration control.
+- `requiresSetting: "includeHipHinges"`: include that section only when the Hip Hinges toggle is on.
+
+Use `loadDefaultWorkoutDefinition()` for the startup fetch, then `hydrateDefaultWorkoutSection()` to convert recipe sections into runnable step objects. If the JSON file cannot be loaded, the page shows a status message in the workout JSON area. Fetching local JSON generally requires serving the page through GitHub Pages or a local web server; opening the HTML directly with `file://` may block it.
+
+Keep default step ids stable when possible, because saved order, deletions, imports, and reports refer to ids such as:
+
+```text
+round-1-bicep-curls
+round-1-tricep-extensions
+round-1-squats-exercise-band
+round-2-side-plank
+round-3-crunches
+```
+
 ## Full Workout Data Model
 
 Full Workout is built from step objects, then expanded into runnable segment objects.
 
-`buildFullWorkoutSteps()` creates the default workout:
+`buildFullWorkoutSteps()` reads the loaded JSON recipe and creates the current default workout:
 
 - 3 rounds.
 - Bicep Curls use the current Bicep Curls settings.
@@ -101,18 +132,6 @@ Full Workout is built from step objects, then expanded into runnable segment obj
 - Tricep arm switching becomes a timed `switch` segment.
 - Manual exercises become a single `manual` segment.
 - Rests become timed `rest` segments via `appendTimedSegment()`.
-
-Step ids are stable strings such as:
-
-```text
-round-1-bicep-curls
-round-1-tricep-extensions
-round-1-squats-exercise-band
-round-2-side-plank
-round-3-crunches
-```
-
-Keep ids stable if possible, because JSON import/export, reordering, deletion, and reports refer to them.
 
 ## Full Workout Runtime State
 
@@ -284,9 +303,10 @@ Examples:
 
 ## Safe Change Checklist
 
-After editing `strength-timer.html`, run:
+After editing `strength-timer.html` or `strength-timer-default-workout.json`, run:
 
 ```sh
+node -e 'JSON.parse(require("fs").readFileSync("strength-timer-default-workout.json","utf8")); console.log("default-workout-json-ok");'
 node -e 'const fs=require("fs"); const html=fs.readFileSync("strength-timer.html","utf8"); const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]); scripts.forEach((script,i)=>{ new Function(script); console.log(`script-${i+1}-ok`); });'
 git diff --check
 ```

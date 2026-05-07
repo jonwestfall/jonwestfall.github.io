@@ -889,6 +889,7 @@
 
     <script>
       const STORAGE_KEY = "strength-tempo-timer-settings-v2";
+      const DEFAULT_WORKOUT_URL = "strength-timer-default-workout.json";
 
       const presets = {
         biceps: {
@@ -936,6 +937,8 @@
         customOrder: [],
         deletedStepIds: []
       };
+
+      let defaultWorkoutDefinition = { version: 1, rounds: [] };
 
       const phases = [
         { key: "up", label: "Seconds Up" },
@@ -1331,7 +1334,7 @@
             <h2>Full Workout Guidance</h2>
             <p><strong>Sequence:</strong> Three rounds with biceps, triceps, band/dumbbell work, and core.</p>
             <p><strong>Core:</strong> Crunches in rounds 1 and 3, Side Plank in round 2.</p>
-            <p><strong>Timing:</strong> Biceps and triceps use their current tab settings; other reps use biceps tempo.</p>
+            <p><strong>Timing:</strong> Biceps and triceps use timed phases; other exercises are manual advance.</p>
           `;
           return;
         }
@@ -1469,88 +1472,108 @@
         advancePhase(settings);
       }
 
-      function buildFullWorkoutSteps() {
-        const rest = Math.max(0, Number(fullSettings.standardRest));
-        const standardReps = Math.max(1, Number(fullSettings.standardReps));
-        const bicepsReps = repsPerSet(getTempoSettings("biceps"));
-        const tricepsReps = repsPerSet(getTempoSettings("triceps"));
-        const steps = [];
-
-        for (let round = 1; round <= 3; round += 1) {
-          steps.push({
-            id: `round-${round}-bicep-curls`,
-            type: "reps",
-            round,
-            name: "Bicep Curls",
-            reps: bicepsReps,
-            timingSource: "biceps",
-            afterRestSeconds: rest
-          });
-          steps.push({
-            id: `round-${round}-tricep-extensions`,
-            type: "triceps_two_arm",
-            round,
-            name: "Tricep Extensions",
-            repsPerArm: tricepsReps,
-            timingSource: "triceps",
-            armSwitchRestSeconds: Math.max(0, Number(fullSettings.armSwitchRest)),
-            afterRestSeconds: rest
-          });
-          steps.push({
-            id: `round-${round}-squats-exercise-band`,
-            type: "manual_reps",
-            round,
-            name: "Squats: Exercise Band",
-            reps: standardReps,
-            afterRestSeconds: rest
-          });
-          if (fullSettings.includeHipHinges) {
-            steps.push({
-              id: `round-${round}-hip-hinges-exercise-band`,
-              type: "manual_reps",
-              round,
-              name: "Hip Hinges: Exercise Band",
-              reps: standardReps,
-              afterRestSeconds: rest
-            });
+      async function loadDefaultWorkoutDefinition() {
+        try {
+          const response = await fetch(DEFAULT_WORKOUT_URL, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
           }
-          steps.push({
-            id: `round-${round}-shoulder-shrugs-dumbbell`,
-            type: "manual_reps",
-            round,
-            name: "Shoulder Shrugs: Dumbbell",
-            reps: standardReps,
-            afterRestSeconds: rest
-          });
-          steps.push({
-            id: `round-${round}-upright-band-rows`,
-            type: "manual_reps",
-            round,
-            name: "Upright Band Rows",
-            reps: standardReps,
-            afterRestSeconds: rest
-          });
-
-          if (round === 2) {
-            steps.push({
-              id: `round-${round}-side-plank`,
-              type: "manual_hold",
-              round,
-              name: "Side Plank",
-              durationSeconds: Math.max(1, Number(fullSettings.sidePlankDuration)),
-              afterRestSeconds: rest
-            });
-          } else {
-            steps.push({
-              id: `round-${round}-crunches`,
-              type: "manual_reps",
-              round,
-              name: "Crunches",
-              reps: standardReps,
-              afterRestSeconds: round === 3 ? 0 : rest
-            });
+          const data = await response.json();
+          if (!Array.isArray(data?.rounds)) {
+            throw new Error("Missing rounds array");
           }
+          defaultWorkoutDefinition = data;
+        } catch (error) {
+          console.warn("Default workout JSON could not be loaded.", error);
+          defaultWorkoutDefinition = { version: 1, rounds: [] };
+          setWorkoutJsonStatus("Default workout JSON could not be loaded. Use a web server or GitHub Pages to load the workout file.");
         }
+      }
+
+      function defaultWorkoutSections() {
+        return (defaultWorkoutDefinition.rounds || []).flatMap((roundBlock) => {
+          const round = clampNumber(roundBlock?.round, 1, 1, 99);
+          const sections = Array.isArray(roundBlock?.sections) ? roundBlock.sections : [];
+          return sections.map((section) => ({ ...section, round }));
+        });
+      }
+
+      function includeDefaultWorkoutSection(section) {
+        if (!section?.requiresSetting) return true;
+        return Boolean(fullSettings[section.requiresSetting]);
+      }
+
+      function resolveDefaultReps(source) {
+        if (source === "biceps") return repsPerSet(getTempoSettings("biceps"));
+        if (source === "triceps") return repsPerSet(getTempoSettings("triceps"));
+        return clampNumber(fullSettings.standardReps, defaultFullSettings.standardReps, 1, 30);
+      }
+
+      function resolveDefaultSeconds(source, fallback) {
+        if (source === "standard") return clampNumber(fullSettings.standardRest, defaultFullSettings.standardRest, 0, 120);
+        if (source === "triceps") return clampNumber(fullSettings.armSwitchRest, defaultFullSettings.armSwitchRest, 0, 60);
+        if (source === "sidePlank") return clampNumber(fullSettings.sidePlankDuration, defaultFullSettings.sidePlankDuration, 5, 90);
+        return fallback;
+      }
+
+      function defaultRestSeconds(section) {
+        if (section.afterRestSeconds !== undefined) {
+          return clampNumber(section.afterRestSeconds, 0, 0, 120);
+        }
+        return resolveDefaultSeconds(section.afterRestSource, 0);
+      }
+
+      function hydrateDefaultWorkoutSection(section) {
+        if (!section?.id || !section?.name || !includeDefaultWorkoutSection(section)) {
+          return null;
+        }
+
+        const step = {
+          id: section.id,
+          type: section.type,
+          round: clampNumber(section.round, 1, 1, 99),
+          name: section.name,
+          afterRestSeconds: defaultRestSeconds(section)
+        };
+
+        if (section.type === "reps") {
+          return {
+            ...step,
+            reps: resolveDefaultReps(section.repsSource),
+            timingSource: section.timingSource === "triceps" ? "triceps" : "biceps"
+          };
+        }
+
+        if (section.type === "triceps_two_arm") {
+          return {
+            ...step,
+            repsPerArm: resolveDefaultReps(section.repsSource),
+            timingSource: "triceps",
+            armSwitchRestSeconds: resolveDefaultSeconds(section.armSwitchRestSource, 0)
+          };
+        }
+
+        if (section.type === "manual_reps") {
+          return {
+            ...step,
+            reps: resolveDefaultReps(section.repsSource)
+          };
+        }
+
+        if (section.type === "manual_hold") {
+          return {
+            ...step,
+            durationSeconds: resolveDefaultSeconds(section.durationSource, 1)
+          };
+        }
+
+        return null;
+      }
+
+      function buildFullWorkoutSteps() {
+        const steps = defaultWorkoutSections()
+          .map(hydrateDefaultWorkoutSection)
+          .filter(Boolean);
 
         return applyFullWorkoutEdits(steps);
       }
@@ -2569,10 +2592,16 @@
         hideTrafficToggle.checked = Boolean(stored.display.hideTraffic);
         muteTonesToggle.checked = Boolean(stored.display.muteTones);
       }
-      applyFullControls();
-      loadExercise(activeExercise);
-      applyNumberVisibility();
-      applyTrafficVisibility();
+
+      async function initializeApp() {
+        await loadDefaultWorkoutDefinition();
+        applyFullControls();
+        loadExercise(activeExercise);
+        applyNumberVisibility();
+        applyTrafficVisibility();
+      }
+
+      initializeApp();
     </script>
   </body>
 </html>
