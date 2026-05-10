@@ -551,6 +551,24 @@
         color: #4c130b;
       }
 
+      .inline-reps-edit {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        cursor: pointer;
+        font: inherit;
+        font-weight: 800;
+        padding: 0.08rem 0.55rem;
+        touch-action: manipulation;
+      }
+
+      .inline-reps-edit:focus-visible {
+        outline: 3px solid rgba(255, 255, 255, 0.6);
+        outline-offset: 2px;
+      }
+
       .guidance {
         margin-top: 16px;
         border-radius: 12px;
@@ -655,7 +673,7 @@
             <p class="cycle" id="cycle-meta">Cycle length: 6s</p>
             <div class="time-grid">
               <div class="time-card">
-                <p class="time-title">Total Time</p>
+                <p class="time-title" id="total-time-title">Estimated Time</p>
                 <p class="time-value" id="total-time-value">03:45</p>
               </div>
               <div class="time-card">
@@ -1001,6 +1019,7 @@
       const importWorkoutBtn = document.getElementById("import-workout-btn");
       const workoutJsonText = document.getElementById("workout-json-text");
       const workoutJsonStatus = document.getElementById("workout-json-status");
+      const totalTimeTitle = document.getElementById("total-time-title");
       const totalTimeValue = document.getElementById("total-time-value");
       const remainingTimeValue = document.getElementById("remaining-time-value");
       const exerciseTimeCard = document.getElementById("exercise-time-card");
@@ -1026,6 +1045,7 @@
       let activeExercise = "biceps";
       let hasLoadedExercise = false;
       let timer = null;
+      let elapsedDisplayTimer = null;
       let isRunning = false;
       let phaseIndex = 0;
       let remaining = 0;
@@ -1283,16 +1303,43 @@
         `;
       }
 
+      function workoutElapsedSeconds() {
+        const loggedSeconds = workoutLog.reduce((sum, entry) => sum + (Number(entry.actualSeconds) || 0), 0);
+        const activeSeconds = activeLogStartedAt ? Math.max(0, (Date.now() - activeLogStartedAt) / 1000) : 0;
+        return Math.round(loggedSeconds + activeSeconds);
+      }
+
+      function updateWorkoutTimeDisplays() {
+        const showingActual = activeExercise === "full" && Boolean(workoutSessionStartedAt);
+        totalTimeTitle.textContent = showingActual ? "Actual Time" : "Estimated Time";
+        if (showingActual) {
+          totalTimeValue.textContent = formatClock(workoutElapsedSeconds());
+        }
+      }
+
+      function startElapsedDisplayTimer() {
+        if (elapsedDisplayTimer) return;
+        elapsedDisplayTimer = setInterval(updateWorkoutTimeDisplays, 1000);
+      }
+
+      function stopElapsedDisplayTimer() {
+        if (!elapsedDisplayTimer) return;
+        clearInterval(elapsedDisplayTimer);
+        elapsedDisplayTimer = null;
+      }
+
       function renderTimeTotals(settings) {
         const total = activeExercise === "full" ? totalFullWorkoutSeconds() : totalWorkoutSeconds(settings);
         if (!isRunning || workoutRemaining <= 0 || workoutRemaining > total) {
           workoutRemaining = total;
         }
+        totalTimeTitle.textContent = "Estimated Time";
         totalTimeValue.textContent = formatClock(total);
         remainingTimeValue.textContent = formatClock(workoutRemaining);
         if (activeExercise !== "full") {
           exerciseTimeValue.textContent = formatClock(workoutRemaining);
         }
+        updateWorkoutTimeDisplays();
       }
 
       function applyNumberVisibility() {
@@ -1697,8 +1744,10 @@
         });
       }
 
-      function totalFullWorkoutSeconds() {
-        buildFullWorkout();
+      function totalFullWorkoutSeconds(rebuild = true) {
+        if (rebuild) {
+          buildFullWorkout();
+        }
         const workout = fullSegments.reduce((sum, segment) => sum + segment.duration, 0);
         return workout + fullStartCountdown();
       }
@@ -1906,6 +1955,7 @@
         if (!workoutSessionStartedAt) {
           workoutSessionStartedAt = Date.now();
           workoutReport.classList.add("hidden");
+          startElapsedDisplayTimer();
         }
         if (activeLogKey !== segment.logKey) {
           accrueActiveLog();
@@ -1918,6 +1968,7 @@
         if (!activeLogStartedAt) {
           activeLogStartedAt = Date.now();
         }
+        updateWorkoutTimeDisplays();
       }
 
       function pauseActiveLog() {
@@ -1947,6 +1998,7 @@
       }
 
       function clearWorkoutLog() {
+        stopElapsedDisplayTimer();
         workoutLog = [];
         activeLogKey = "";
         activeLogStartedAt = 0;
@@ -1959,6 +2011,7 @@
 
       function renderWorkoutReport(status = "Workout ended.") {
         stopActiveLog();
+        stopElapsedDisplayTimer();
         workoutReportRows = workoutLog.map((entry, index) => ({
           order: index + 1,
           round: entry.round,
@@ -1993,6 +2046,30 @@
           `).join("")
           : `<tr><td colspan="9">No workout activity has been logged yet.</td></tr>`;
         workoutReport.classList.remove("hidden");
+      }
+
+      function editCurrentManualReps() {
+        if (activeExercise !== "full") return;
+        const segment = fullSegments[fullSegmentIndex];
+        const step = fullSteps[segment?.stepIndex];
+        if (!segment?.isManual || step?.type !== "manual_reps") return;
+
+        const currentReps = displayManualReps(step);
+        const entered = window.prompt(`Reps completed for ${step.name}, round ${step.round}:`, String(currentReps));
+        if (entered == null) return;
+
+        const nextReps = clampNumber(entered, currentReps, 0, 99);
+        step.actualReps = nextReps;
+        const entry = currentLogEntry();
+        if (entry && entry.type === "manual") {
+          entry.repsCompleted = nextReps;
+          entry.repsTarget = nextReps;
+          entry.target = `${nextReps} reps`;
+          entry.notes = nextReps === entry.plannedReps
+            ? ""
+            : `Manual reps adjusted from planned ${entry.plannedReps} to ${nextReps}.`;
+        }
+        renderFullSegment();
       }
 
       function reportCsv() {
@@ -2164,6 +2241,10 @@
         return total;
       }
 
+      function displayManualReps(step) {
+        return step?.actualReps ?? step?.reps ?? 0;
+      }
+
       function renderFullSegment() {
         const segment = fullSegments[fullSegmentIndex];
         const step = fullSteps[segment?.stepIndex];
@@ -2178,7 +2259,7 @@
         clock.textContent = segment.isManual ? "Done?" : String(remaining);
         cycleMeta.textContent = `Round ${step.round}/3`;
         exerciseTimeCard.classList.remove("hidden");
-        totalTimeValue.textContent = formatClock(totalFullWorkoutSeconds());
+        totalTimeValue.textContent = formatClock(totalFullWorkoutSeconds(!workoutSessionStartedAt));
         remainingTimeValue.textContent = formatClock(workoutRemaining);
         exerciseTimeValue.textContent = formatClock(currentFullGroupRemaining());
         phaseFill.style.width = segment.isManual
@@ -2191,7 +2272,9 @@
         const sideText = segment.side ? `<div>Side <strong>${segment.side}</strong></div>` : "";
         const repText = segment.rep ? `<div>Rep <strong>${segment.rep}</strong>/<strong>${segment.reps}</strong></div>` : "";
         const manualText = segment.isManual
-          ? `<div>${step.type === "manual_hold" ? "Hold" : "Reps"} <strong>${step.type === "manual_hold" ? `${step.durationSeconds}s` : step.reps}</strong></div>`
+          ? step.type === "manual_hold"
+            ? `<div>Hold <strong>${step.durationSeconds}s</strong></div>`
+            : `<div>Reps <button class="inline-reps-edit" type="button" data-action="edit-manual-reps" aria-label="Edit reps for ${escapeHtml(step.name)}, round ${step.round}">${displayManualReps(step)}</button></div>`
           : "";
         sessionMeta.innerHTML = `
           <div>Round <strong>${step.round}</strong>/<strong>3</strong></div>
@@ -2204,6 +2287,7 @@
         nextSectionBtn.classList.toggle("hidden", !workoutSessionStartedAt || !(segment.isManual || segment.type === "phase"));
         endRestBtn.classList.toggle("hidden", segment.type !== "rest");
         endWorkoutBtn.classList.toggle("hidden", !workoutSessionStartedAt || finished);
+        updateWorkoutTimeDisplays();
       }
 
       function nextFullInstruction() {
@@ -2438,6 +2522,7 @@
         exerciseTimeValue.textContent = formatClock(0);
         finished = true;
         sessionMeta.innerHTML = `<div><strong>Complete</strong></div>`;
+        stopElapsedDisplayTimer();
         nextSectionBtn.classList.add("hidden");
         endRestBtn.classList.add("hidden");
         endWorkoutBtn.classList.toggle("hidden", activeExercise !== "full" || !workoutSessionStartedAt);
@@ -2557,6 +2642,13 @@
         input.addEventListener("input", handleFullInput);
         input.addEventListener("change", handleFullInput);
       });
+      sessionMeta.addEventListener("click", (event) => {
+        const button = event.target.closest?.("button[data-action='edit-manual-reps']");
+        if (button) {
+          editCurrentManualReps();
+        }
+      });
+
       fullWorkoutList.addEventListener("click", (event) => {
         const button = event.target.closest?.("button[data-action]");
         if (!button) return;
