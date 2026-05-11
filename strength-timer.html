@@ -529,13 +529,14 @@
       }
 
       .workout-actions button {
-        width: 40px;
+        min-width: 40px;
         height: 40px;
         border: none;
         border-radius: 10px;
         background: #e1f4fb;
         color: var(--ink);
-        font-size: 1.05rem;
+        padding: 0 10px;
+        font-size: 0.85rem;
         font-weight: 800;
         cursor: pointer;
         touch-action: manipulation;
@@ -654,13 +655,13 @@
       </p>
 
       <div class="tabs" role="tablist" aria-label="Exercise Tabs">
-        <button class="tab active" type="button" role="tab" aria-selected="true" data-exercise="biceps">
+        <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="biceps">
           Bicep Curls
         </button>
         <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="triceps">
           Tricep Extensions
         </button>
-        <button class="tab" type="button" role="tab" aria-selected="false" data-exercise="full">
+        <button class="tab active" type="button" role="tab" aria-selected="true" data-exercise="full">
           Full Workout
         </button>
       </div>
@@ -847,6 +848,7 @@
           <div class="workout-tools" aria-label="Workout import and export tools">
             <div class="workout-tool-actions">
               <button id="reset-default-workout-btn" class="reset-workout" type="button">Reset to Default Workout</button>
+              <button id="add-exercise-btn" type="button">Add Exercise</button>
               <button id="export-workout-btn" type="button">Export JSON</button>
               <button id="import-workout-btn" type="button">Import JSON</button>
             </div>
@@ -953,7 +955,9 @@
         standardReps: 15,
         includeHipHinges: true,
         customOrder: [],
-        deletedStepIds: []
+        deletedStepIds: [],
+        customSections: [],
+        sectionEdits: {}
       };
 
       let defaultWorkoutDefinition = { version: 1, rounds: [] };
@@ -1015,6 +1019,7 @@
       const fullPlannedTime = document.getElementById("full-planned-time");
       const fullWorkoutList = document.getElementById("full-workout-list");
       const resetDefaultWorkoutBtn = document.getElementById("reset-default-workout-btn");
+      const addExerciseBtn = document.getElementById("add-exercise-btn");
       const exportWorkoutBtn = document.getElementById("export-workout-btn");
       const importWorkoutBtn = document.getElementById("import-workout-btn");
       const workoutJsonText = document.getElementById("workout-json-text");
@@ -1042,7 +1047,7 @@
       };
       let fullSettings = normalizeFullSettings(stored.fullSettings);
 
-      let activeExercise = "biceps";
+      let activeExercise = "full";
       let hasLoadedExercise = false;
       let timer = null;
       let elapsedDisplayTimer = null;
@@ -1167,6 +1172,54 @@
         return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
       }
 
+      function uniqueStepId(prefix = "custom") {
+        const suffix = Math.random().toString(36).slice(2, 8);
+        return `${prefix}-${Date.now().toString(36)}-${suffix}`;
+      }
+
+      function normalizeWorkoutStep(step, fallback = {}) {
+        if (!step?.id || !step?.name) return null;
+        const type = ["reps", "triceps_two_arm", "manual_reps", "manual_hold"].includes(step.type)
+          ? step.type
+          : fallback.type || "manual_reps";
+        const normalized = {
+          id: String(step.id),
+          type,
+          round: clampNumber(step.round, fallback.round || 1, 1, 99),
+          name: String(step.name).trim() || fallback.name || "Custom Exercise",
+          afterRestSeconds: clampNumber(step.afterRestSeconds, fallback.afterRestSeconds || 0, 0, 120),
+          isCustom: Boolean(step.isCustom ?? fallback.isCustom)
+        };
+
+        if (type === "reps") {
+          normalized.reps = clampNumber(step.reps, fallback.reps || defaultFullSettings.standardReps, 1, 99);
+          normalized.timingSource = step.timingSource === "triceps" ? "triceps" : "biceps";
+        } else if (type === "triceps_two_arm") {
+          normalized.repsPerArm = clampNumber(step.repsPerArm, fallback.repsPerArm || defaultFullSettings.standardReps, 1, 99);
+          normalized.timingSource = "triceps";
+          normalized.armSwitchRestSeconds = clampNumber(step.armSwitchRestSeconds, fallback.armSwitchRestSeconds || defaultFullSettings.armSwitchRest, 0, 60);
+        } else if (type === "manual_hold") {
+          normalized.durationSeconds = clampNumber(step.durationSeconds, fallback.durationSeconds || defaultFullSettings.sidePlankDuration, 1, 300);
+        } else {
+          normalized.reps = clampNumber(step.reps, fallback.reps || defaultFullSettings.standardReps, 1, 99);
+        }
+
+        return normalized;
+      }
+
+      function normalizeCustomSections(value) {
+        return Array.isArray(value)
+          ? value.map((step) => normalizeWorkoutStep({ ...step, isCustom: true })).filter(Boolean)
+          : [];
+      }
+
+      function normalizeSectionEdits(value) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+        return Object.fromEntries(Object.entries(value)
+          .map(([id, edit]) => [id, normalizeWorkoutStep({ ...edit, id })])
+          .filter(([, edit]) => Boolean(edit)));
+      }
+
       function normalizeFullSettings(settings, fallback = defaultFullSettings) {
         return {
           standardRest: clampNumber(settings?.standardRest, fallback.standardRest, 0, 120),
@@ -1177,7 +1230,9 @@
             ? settings.includeHipHinges
             : Boolean(fallback.includeHipHinges),
           customOrder: stringArray(settings?.customOrder || settings?.sectionOrder || fallback.customOrder),
-          deletedStepIds: stringArray(settings?.deletedStepIds || fallback.deletedStepIds)
+          deletedStepIds: stringArray(settings?.deletedStepIds || fallback.deletedStepIds),
+          customSections: normalizeCustomSections(settings?.customSections || fallback.customSections),
+          sectionEdits: normalizeSectionEdits(settings?.sectionEdits || fallback.sectionEdits)
         };
       }
 
@@ -1203,7 +1258,9 @@
           standardReps: Number(fullRepsRange.value),
           includeHipHinges: fullIncludeHipsToggle.checked,
           customOrder: Array.isArray(fullSettings.customOrder) ? fullSettings.customOrder : [],
-          deletedStepIds: Array.isArray(fullSettings.deletedStepIds) ? fullSettings.deletedStepIds : []
+          deletedStepIds: Array.isArray(fullSettings.deletedStepIds) ? fullSettings.deletedStepIds : [],
+          customSections: normalizeCustomSections(fullSettings.customSections),
+          sectionEdits: normalizeSectionEdits(fullSettings.sectionEdits)
         };
       }
 
@@ -1580,54 +1637,52 @@
           type: section.type,
           round: clampNumber(section.round, 1, 1, 99),
           name: section.name,
-          afterRestSeconds: defaultRestSeconds(section)
+          afterRestSeconds: defaultRestSeconds(section),
+          isCustom: false
         };
 
+        let hydrated = null;
         if (section.type === "reps") {
-          return {
+          hydrated = {
             ...step,
             reps: resolveDefaultReps(section.repsSource),
             timingSource: section.timingSource === "triceps" ? "triceps" : "biceps"
           };
-        }
-
-        if (section.type === "triceps_two_arm") {
-          return {
+        } else if (section.type === "triceps_two_arm") {
+          hydrated = {
             ...step,
             repsPerArm: resolveDefaultReps(section.repsSource),
             timingSource: "triceps",
             armSwitchRestSeconds: resolveDefaultSeconds(section.armSwitchRestSource, 0)
           };
-        }
-
-        if (section.type === "manual_reps") {
-          return {
+        } else if (section.type === "manual_reps") {
+          hydrated = {
             ...step,
             reps: resolveDefaultReps(section.repsSource)
           };
-        }
-
-        if (section.type === "manual_hold") {
-          return {
+        } else if (section.type === "manual_hold") {
+          hydrated = {
             ...step,
             durationSeconds: resolveDefaultSeconds(section.durationSource, 1)
           };
         }
 
-        return null;
+        const edit = fullSettings.sectionEdits?.[section.id];
+        return edit ? normalizeWorkoutStep({ ...hydrated, ...edit, id: section.id, isCustom: false }, hydrated) : hydrated;
       }
 
       function buildFullWorkoutSteps() {
-        const steps = defaultWorkoutSections()
+        const defaults = defaultWorkoutSections()
           .map(hydrateDefaultWorkoutSection)
           .filter(Boolean);
-
-        return applyFullWorkoutEdits(steps);
+        const custom = normalizeCustomSections(fullSettings.customSections);
+        fullSettings.customSections = custom;
+        return applyFullWorkoutEdits([...defaults, ...custom]);
       }
 
       function applyFullWorkoutEdits(defaultSteps) {
-        const defaultIds = defaultSteps.map((step) => step.id);
-        const deleted = new Set((fullSettings.deletedStepIds || []).filter((id) => defaultIds.includes(id)));
+        const allIds = defaultSteps.map((step) => step.id);
+        const deleted = new Set((fullSettings.deletedStepIds || []).filter((id) => allIds.includes(id)));
         const remainingSteps = defaultSteps.filter((step) => !deleted.has(step.id));
         const byId = new Map(remainingSteps.map((step) => [step.id, step]));
         const ordered = [];
@@ -1807,6 +1862,9 @@
             <div class="workout-actions" aria-label="Edit ${step.name}, round ${step.round}">
               <button type="button" data-action="up" data-step-id="${step.id}" aria-label="Move ${step.name} earlier" ${index === 0 ? "disabled" : ""}>↑</button>
               <button type="button" data-action="down" data-step-id="${step.id}" aria-label="Move ${step.name} later" ${index === fullSteps.length - 1 ? "disabled" : ""}>↓</button>
+              <button type="button" data-action="duplicate" data-step-id="${step.id}" aria-label="Duplicate ${step.name}">Duplicate</button>
+              <button type="button" data-action="rename" data-step-id="${step.id}" aria-label="Rename ${step.name}">Rename</button>
+              <button type="button" data-action="edit" data-step-id="${step.id}" aria-label="Edit ${step.name}">Edit</button>
               <button class="delete-step" type="button" data-action="delete" data-step-id="${step.id}" aria-label="Delete ${step.name}">×</button>
             </div>
           </div>
@@ -1889,14 +1947,148 @@
         updateFullLabels();
       }
 
+      function saveFullWorkoutEdits(message = "Workout sections updated.") {
+        saveStoredSettings();
+        resetDisplay();
+        updateFullLabels();
+        setWorkoutJsonStatus(message);
+      }
+
       function deleteFullStep(stepId) {
+        if (!window.confirm("Remove this section from the workout?")) return;
         const deleted = new Set(fullSettings.deletedStepIds || []);
         deleted.add(stepId);
         fullSettings.deletedStepIds = Array.from(deleted);
         fullSettings.customOrder = (fullSettings.customOrder || []).filter((id) => id !== stepId);
-        saveStoredSettings();
-        resetDisplay();
-        updateFullLabels();
+        fullSettings.customSections = normalizeCustomSections(fullSettings.customSections).filter((step) => step.id !== stepId);
+        if (fullSettings.sectionEdits) {
+          delete fullSettings.sectionEdits[stepId];
+        }
+        saveFullWorkoutEdits("Workout section removed.");
+      }
+
+      function promptNumber(label, current, min, max) {
+        const entered = window.prompt(label, String(current));
+        if (entered == null) return null;
+        return clampNumber(entered, current, min, max);
+      }
+
+      function promptWorkoutStep(existing = {}) {
+        const name = window.prompt("Exercise name:", existing.name || "New Exercise");
+        if (name == null) return null;
+        const cleanName = name.trim();
+        if (!cleanName) return null;
+
+        const typeHelp = "Choose type: reps, triceps_two_arm, manual_reps, or manual_hold";
+        const rawType = window.prompt(typeHelp, existing.type || "manual_reps");
+        if (rawType == null) return null;
+        const type = ["reps", "triceps_two_arm", "manual_reps", "manual_hold"].includes(rawType.trim())
+          ? rawType.trim()
+          : "manual_reps";
+        const round = promptNumber("Round number:", existing.round || 1, 1, 99);
+        if (round == null) return null;
+        const afterRestSeconds = promptNumber("Rest after this section, in seconds:", existing.afterRestSeconds || fullSettings.standardRest, 0, 120);
+        if (afterRestSeconds == null) return null;
+
+        const step = {
+          id: existing.id || uniqueStepId("custom"),
+          name: cleanName,
+          type,
+          round,
+          afterRestSeconds,
+          isCustom: Boolean(existing.isCustom ?? true)
+        };
+
+        if (type === "reps") {
+          const reps = promptNumber("Reps:", existing.reps || fullSettings.standardReps, 1, 99);
+          if (reps == null) return null;
+          const timingSource = window.prompt("Tempo source: biceps or triceps", existing.timingSource || "biceps");
+          step.reps = reps;
+          step.timingSource = timingSource === "triceps" ? "triceps" : "biceps";
+        } else if (type === "triceps_two_arm") {
+          const repsPerArm = promptNumber("Reps per arm:", existing.repsPerArm || fullSettings.standardReps, 1, 99);
+          if (repsPerArm == null) return null;
+          const armSwitchRestSeconds = promptNumber("Arm-switch rest, in seconds:", existing.armSwitchRestSeconds || fullSettings.armSwitchRest, 0, 60);
+          if (armSwitchRestSeconds == null) return null;
+          step.repsPerArm = repsPerArm;
+          step.timingSource = "triceps";
+          step.armSwitchRestSeconds = armSwitchRestSeconds;
+        } else if (type === "manual_hold") {
+          const durationSeconds = promptNumber("Hold duration, in seconds:", existing.durationSeconds || fullSettings.sidePlankDuration, 1, 300);
+          if (durationSeconds == null) return null;
+          step.durationSeconds = durationSeconds;
+        } else {
+          const reps = promptNumber("Manual reps:", existing.reps || fullSettings.standardReps, 1, 99);
+          if (reps == null) return null;
+          step.reps = reps;
+        }
+
+        return normalizeWorkoutStep(step, existing);
+      }
+
+      function upsertCustomStep(step) {
+        const custom = normalizeCustomSections(fullSettings.customSections);
+        const index = custom.findIndex((item) => item.id === step.id);
+        if (index >= 0) {
+          custom[index] = { ...step, isCustom: true };
+        } else {
+          custom.push({ ...step, isCustom: true });
+        }
+        fullSettings.customSections = custom;
+      }
+
+      function addCustomExercise() {
+        const step = promptWorkoutStep({ round: 1, afterRestSeconds: fullSettings.standardRest, isCustom: true });
+        if (!step) return;
+        upsertCustomStep(step);
+        fullSettings.customOrder = [...fullSteps.map((item) => item.id), step.id];
+        saveFullWorkoutEdits("Custom exercise added.");
+      }
+
+      function duplicateFullStep(stepId) {
+        const source = fullSteps.find((step) => step.id === stepId);
+        if (!source) return;
+        const duplicate = normalizeWorkoutStep({
+          ...source,
+          id: uniqueStepId("copy"),
+          name: `${source.name} Copy`,
+          isCustom: true
+        }, source);
+        upsertCustomStep(duplicate);
+        const nextOrder = fullSteps.map((step) => step.id);
+        nextOrder.splice(nextOrder.indexOf(stepId) + 1, 0, duplicate.id);
+        fullSettings.customOrder = nextOrder;
+        saveFullWorkoutEdits("Workout section duplicated. Use the arrows to move the copy where you want it.");
+      }
+
+      function renameFullStep(stepId) {
+        const source = fullSteps.find((step) => step.id === stepId);
+        if (!source) return;
+        const name = window.prompt("New section name:", source.name);
+        if (name == null) return;
+        const cleanName = name.trim();
+        if (!cleanName) return;
+        if (source.isCustom) {
+          upsertCustomStep({ ...source, name: cleanName, isCustom: true });
+        } else {
+          fullSettings.sectionEdits = normalizeSectionEdits(fullSettings.sectionEdits);
+          fullSettings.sectionEdits[stepId] = normalizeWorkoutStep({ ...source, name: cleanName, isCustom: false }, source);
+        }
+        saveFullWorkoutEdits("Workout section renamed.");
+      }
+
+      function editFullStep(stepId) {
+        const source = fullSteps.find((step) => step.id === stepId);
+        if (!source) return;
+        const edited = promptWorkoutStep(source);
+        if (!edited) return;
+        if (source.isCustom) {
+          upsertCustomStep({ ...edited, id: stepId, isCustom: true });
+        } else {
+          fullSettings.sectionEdits = normalizeSectionEdits(fullSettings.sectionEdits);
+          fullSettings.sectionEdits[stepId] = normalizeWorkoutStep({ ...edited, id: stepId, isCustom: false }, source);
+        }
+        saveFullWorkoutEdits("Workout section edited.");
       }
 
       function currentLogEntry() {
@@ -2158,6 +2350,8 @@
             },
             sectionOrder: fullSteps.map((step) => step.id),
             deletedStepIds: fullSettings.deletedStepIds || [],
+            customSections: fullSettings.customSections || [],
+            sectionEdits: fullSettings.sectionEdits || {},
             sections: fullSteps.map((step) => ({
               id: step.id,
               round: step.round,
@@ -2180,7 +2374,9 @@
           ...fullSettings,
           includeHipHinges: true,
           customOrder: [],
-          deletedStepIds: []
+          deletedStepIds: [],
+          customSections: [],
+          sectionEdits: {}
         };
         applyFullControls();
         saveStoredSettings();
@@ -2203,7 +2399,9 @@
         const nextFullSettings = normalizeFullSettings({
           ...importedFullSettings,
           customOrder: importedFull.sectionOrder || importedFullSettings.customOrder,
-          deletedStepIds: importedFull.deletedStepIds || importedFullSettings.deletedStepIds
+          deletedStepIds: importedFull.deletedStepIds || importedFullSettings.deletedStepIds,
+          customSections: importedFull.customSections || importedFullSettings.customSections,
+          sectionEdits: importedFull.sectionEdits || importedFullSettings.sectionEdits
         }, fullSettings);
 
         if (data.exerciseSettings) {
@@ -2600,7 +2798,35 @@
         oscillator.stop(now + 0.18);
       }
 
+      function tabFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const requested = (params.get("tab") || params.get("exercise") || "full").toLowerCase();
+        if (["biceps", "triceps", "full"].includes(requested)) {
+          return requested;
+        }
+        if (requested === "bicep" || requested === "bicep-curls") return "biceps";
+        if (requested === "tricep" || requested === "tricep-extensions") return "triceps";
+        return "full";
+      }
+
+      function setActiveTab(exercise, updateUrl = true) {
+        tabs.forEach((tab) => {
+          const selected = tab.dataset.exercise === exercise;
+          tab.classList.toggle("active", selected);
+          tab.setAttribute("aria-selected", selected ? "true" : "false");
+        });
+        if (updateUrl) {
+          const url = new URL(window.location.href);
+          url.searchParams.set("tab", exercise);
+          window.history.replaceState({}, "", url);
+        }
+      }
+
       function loadExercise(exercise) {
+        if (!["biceps", "triceps", "full"].includes(exercise)) {
+          exercise = "full";
+        }
+        setActiveTab(exercise);
         if (hasLoadedExercise && (activeExercise === "biceps" || activeExercise === "triceps")) {
           exerciseSettings[activeExercise] = readTempoControls();
           saveStoredSettings();
@@ -2624,12 +2850,6 @@
 
       tabs.forEach((tab) => {
         tab.addEventListener("click", () => {
-          tabs.forEach((el) => {
-            const selected = el === tab;
-            el.classList.toggle("active", selected);
-            el.setAttribute("aria-selected", selected ? "true" : "false");
-          });
-
           loadExercise(tab.dataset.exercise);
         });
       });
@@ -2661,6 +2881,12 @@
           moveFullStep(stepId, -1);
         } else if (action === "down") {
           moveFullStep(stepId, 1);
+        } else if (action === "duplicate") {
+          duplicateFullStep(stepId);
+        } else if (action === "rename") {
+          renameFullStep(stepId);
+        } else if (action === "edit") {
+          editFullStep(stepId);
         } else if (action === "delete") {
           deleteFullStep(stepId);
         }
@@ -2676,6 +2902,7 @@
       resetBtn.addEventListener("click", resetDisplay);
       downloadReportCsvBtn.addEventListener("click", downloadReportCsv);
       resetDefaultWorkoutBtn.addEventListener("click", resetDefaultWorkout);
+      addExerciseBtn.addEventListener("click", addCustomExercise);
       exportWorkoutBtn.addEventListener("click", exportWorkoutJson);
       importWorkoutBtn.addEventListener("click", importWorkoutJson);
 
@@ -2688,7 +2915,7 @@
       async function initializeApp() {
         await loadDefaultWorkoutDefinition();
         applyFullControls();
-        loadExercise(activeExercise);
+        loadExercise(tabFromUrl());
         applyNumberVisibility();
         applyTrafficVisibility();
       }
