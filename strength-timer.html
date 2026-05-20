@@ -949,7 +949,7 @@
       };
 
       const defaultFullSettings = {
-        standardRest: 30,
+        standardRest: 20,
         armSwitchRest: 15,
         sidePlankDuration: 15,
         standardReps: 15,
@@ -1162,7 +1162,7 @@
           reset: clampNumber(settings?.reset, fallback.reset, 0, 10),
           setRest: clampNumber(settings?.setRest, fallback.setRest, 0, 240),
           sets: clampNumber(settings?.sets, fallback.sets, 1, 8),
-          startReps: clampNumber(settings?.startReps, fallback.startReps, 1, 30),
+          startReps: clampNumber(settings?.startReps, fallback.startReps, 1, 20),
           startCountdown: clampNumber(settings?.startCountdown, fallback.startCountdown, 0, 15),
           repDirection: settings?.repDirection === "down" ? "down" : "up"
         };
@@ -1225,7 +1225,7 @@
           standardRest: clampNumber(settings?.standardRest, fallback.standardRest, 0, 120),
           armSwitchRest: clampNumber(settings?.armSwitchRest, fallback.armSwitchRest, 0, 60),
           sidePlankDuration: clampNumber(settings?.sidePlankDuration, fallback.sidePlankDuration, 5, 90),
-          standardReps: clampNumber(settings?.standardReps, fallback.standardReps, 1, 30),
+          standardReps: clampNumber(settings?.standardReps, fallback.standardReps, 1, 20),
           includeHipHinges: typeof settings?.includeHipHinges === "boolean"
             ? settings.includeHipHinges
             : Boolean(fallback.includeHipHinges),
@@ -1610,7 +1610,7 @@
       function resolveDefaultReps(source) {
         if (source === "biceps") return repsPerSet(getTempoSettings("biceps"));
         if (source === "triceps") return repsPerSet(getTempoSettings("triceps"));
-        return clampNumber(fullSettings.standardReps, defaultFullSettings.standardReps, 1, 30);
+        return clampNumber(fullSettings.standardReps, defaultFullSettings.standardReps, 1, 20);
       }
 
       function resolveDefaultSeconds(source, fallback) {
