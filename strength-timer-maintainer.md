@@ -95,6 +95,8 @@ The JSON file is declarative. It does not store current user slider values. Inst
 - `durationSource: "sidePlank"`: use the Full Workout tab's side plank duration control.
 - `requiresSetting: "includeHipHinges"`: include that section only when the Hip Hinges toggle is on.
 
+Current defaults are 12 reps and 20s set rest for Bicep Curls and Tricep Extensions, while the Full Workout standard reps control remains 15 reps for everything else.
+
 Use `loadDefaultWorkoutDefinition()` for the startup fetch, then `hydrateDefaultWorkoutSection()` to convert recipe sections into runnable step objects. If the JSON file cannot be loaded, the page shows a status message in the workout JSON area. Fetching local JSON generally requires serving the page through GitHub Pages or a local web server; opening the HTML directly with `file://` may block it.
 
 Keep default step ids stable when possible, because saved order, deletions, imports, and reports refer to ids such as:
@@ -282,7 +284,7 @@ order,round,section,activity,type,completed_reps,planned_reps,target_reps,target
 
 Examples:
 
-- If Bicep Curls is advanced early after 3 of 15 reps, the report records `completed_reps=3`, `planned_reps=15`, `target_reps=15`, and a note like `Advanced early after 3 of 15 reps.`
+- If Bicep Curls is advanced early after 3 of 12 reps, the report records `completed_reps=3`, `planned_reps=12`, `target_reps=12`, and a note like `Advanced early after 3 of 12 reps.`
 - If a rest is skipped, the report records the actual rest time and `skipped=true`.
 - Manual rep sections record wall-clock time and set rep fields from the planned manual reps.
 
